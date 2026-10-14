@@ -7,7 +7,7 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "test": "node --test \"skills/**/*.test.mjs\" \"tools/**/*.test.ts\"",
+    "test": "node --test \"skills/**/*.test.mjs\" \"tools/**/*.test.ts\" \"packages/**/*.test.ts\"",
     "typecheck": "tsc -p .",
     "skill:pack": "node skills/vyvody/pack.mjs",
     "skill:check": "node skills/vyvody/check.mjs",
