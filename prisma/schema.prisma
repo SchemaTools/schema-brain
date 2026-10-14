@@ -1,0 +1,184 @@
+// Схема базы Schema Brain (docs/spec.md, разделы 2–3).
+// Перечисления хранятся текстом с проверкой CHECK в миграции: коды — из packages/core/src/enums.ts.
+// Поиск — столбец search_vector (to_tsvector('russian', …)), вычисляется базой; его и
+// проверки CHECK Prisma не знает — они дописаны в migration.sql вручную.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../apps/server/src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "ts"
+  generatedFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Ядро: Проектирование, BIM и Revit, Процессы бюро, Инструменты
+model Core {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String   @default("")
+  sort        Int      @default(0)
+  records     Record[]
+
+  @@map("core")
+}
+
+/// Объект Schema Teams
+model Project {
+  id         Int      @id @default(autoincrement())
+  externalId String?  @unique @map("external_id")
+  code       String   @unique
+  name       String   @default("")
+  active     Boolean  @default(true)
+  records    Record[]
+
+  @@map("project")
+}
+
+/// Сотрудник: в базе — только обезличенный ярлык
+model Person {
+  id       String     @id @default(uuid()) @db.Uuid
+  label    String     @unique
+  active   Boolean    @default(true)
+  created  DateTime   @default(now()) @db.Timestamptz(3)
+  tokens   Token[]
+  records  Record[]
+  feedback Feedback[]
+  sessions Session[]
+
+  @@map("person")
+}
+
+/// Токен агента или веба: хранится только хэш
+model Token {
+  id       String    @id @default(uuid()) @db.Uuid
+  personId String    @map("person_id") @db.Uuid
+  person   Person    @relation(fields: [personId], references: [id])
+  client   String
+  scopes   String[]
+  hash     String    @unique
+  hint     String
+  note     String    @default("")
+  created  DateTime  @default(now()) @db.Timestamptz(3)
+  lastUsed DateTime? @map("last_used") @db.Timestamptz(3)
+  revoked  DateTime? @db.Timestamptz(3)
+  sessions Session[]
+
+  @@index([personId])
+  @@map("token")
+}
+
+/// Сеанс веба после входа по токену (cookie)
+model Session {
+  id       String   @id
+  personId String   @map("person_id") @db.Uuid
+  person   Person   @relation(fields: [personId], references: [id])
+  tokenId  String   @map("token_id") @db.Uuid
+  token    Token    @relation(fields: [tokenId], references: [id])
+  created  DateTime @default(now()) @db.Timestamptz(3)
+  expires  DateTime @db.Timestamptz(3)
+
+  @@map("session")
+}
+
+/// Запись: вывод или открытый вопрос
+model Record {
+  id                String                   @id @default(uuid()) @db.Uuid
+  number            Int                      @unique @default(autoincrement())
+  type              String
+  kind              String?
+  text              String
+  coreId            Int                      @map("core_id")
+  core              Core                     @relation(fields: [coreId], references: [id])
+  projectId         Int?                     @map("project_id")
+  project           Project?                 @relation(fields: [projectId], references: [id])
+  softwareVersion   String?                  @map("software_version")
+  notApplicable     String?                  @map("not_applicable")
+  source            String
+  refs              Json                     @default("[]")
+  authorId          String                   @map("author_id") @db.Uuid
+  author            Person                   @relation(fields: [authorId], references: [id])
+  authorClient      String                   @map("author_client")
+  confirmedByAuthor Boolean                  @map("confirmed_by_author")
+  status            String
+  requestsCount     Int                      @default(0) @map("requests_count")
+  askedCount        Int                      @default(0) @map("asked_count")
+  worked            Int                      @default(0)
+  failed            Int                      @default(0)
+  needsCheck        Boolean                  @default(false) @map("needs_check")
+  importHash        String?                  @unique @map("import_hash")
+  version           Int                      @default(1)
+  searchVector      Unsupported("tsvector")? @map("search_vector")
+  created           DateTime                 @default(now()) @db.Timestamptz(3)
+  updated           DateTime                 @default(now()) @updatedAt @db.Timestamptz(3)
+  linksFrom         Link[]                   @relation("from")
+  linksTo           Link[]                   @relation("to")
+  feedback          Feedback[]
+  events            RecordEvent[]
+
+  @@index([status])
+  @@index([coreId])
+  @@index([projectId])
+  @@map("record")
+}
+
+/// Связь между записями
+model Link {
+  id        String   @id @default(uuid()) @db.Uuid
+  fromId    String   @map("from_id") @db.Uuid
+  from      Record   @relation("from", fields: [fromId], references: [id])
+  toId      String   @map("to_id") @db.Uuid
+  to        Record   @relation("to", fields: [toId], references: [id])
+  type      String
+  createdBy String   @map("created_by") @db.Uuid
+  created   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([fromId, toId, type])
+  @@index([toId])
+  @@map("link")
+}
+
+/// Отметка «сработало / не сработало»; прежние отметки остаются для датасета
+model Feedback {
+  id              String   @id @default(uuid()) @db.Uuid
+  recordId        String   @map("record_id") @db.Uuid
+  record          Record   @relation(fields: [recordId], references: [id])
+  personId        String   @map("person_id") @db.Uuid
+  person          Person   @relation(fields: [personId], references: [id])
+  client          String
+  worked          Boolean
+  comment         String   @default("")
+  softwareVersion String?  @map("software_version")
+  created         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([recordId])
+  @@map("feedback")
+}
+
+/// Журнал записи: создание, правки, решения, отметки, связи — источник карточки и датасета
+model RecordEvent {
+  id       BigInt   @id @default(autoincrement())
+  recordId String   @map("record_id") @db.Uuid
+  record   Record   @relation(fields: [recordId], references: [id])
+  personId String?  @map("person_id") @db.Uuid
+  client   String
+  kind     String
+  data     Json     @default("{}")
+  created  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([recordId])
+  @@map("record_event")
+}
+
+/// Текущая версия продукта — для пометки «проверить»
+model SoftwareCurrent {
+  product String   @id
+  version String
+  changed DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("software_current")
+}

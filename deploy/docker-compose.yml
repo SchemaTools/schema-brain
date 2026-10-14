@@ -1,0 +1,48 @@
+# Установка Schema Brain: два контейнера — база и сервис (docs/adr/001-стек-и-хранение.md).
+# Настройки — в deploy/.env (в репозиторий не попадает), образец — deploy/.env.example.
+name: schema-brain
+
+services:
+  db:
+    # PostgreSQL 16 с расширением pgvector — пригодится для векторов на локальной модели бюро
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: schema_brain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD в deploy/.env}
+      POSTGRES_DB: schema_brain
+      TZ: ${TIMEZONE:-UTC}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # порт базы наружу не открывается
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U schema_brain -d schema_brain']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  app:
+    build:
+      context: ..
+    image: schema-brain:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://schema_brain:${POSTGRES_PASSWORD}@db:5432/schema_brain
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TZ: ${TIMEZONE:-UTC}
+    ports:
+      - '${APP_PORT:?не задан APP_PORT в deploy/.env}:3000'
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: '20m'
+        max-file: '10'
+
+volumes:
+  db-data:

@@ -129,6 +129,8 @@ test('связи: противоречие — только факты и гип
   const question = ref('question', null, 'open');
   assert.equal(linkProblem('contradicts', fact, hyp, false), '');
   assert.match(linkProblem('contradicts', fact, rule, false), /у правила бюро соперников нет/);
+  // запись на модерации может указать на правило — это сигнал модератору
+  assert.equal(linkProblem('contradicts', ref('conclusion', 'fact', 'disputed'), rule, false), '');
   assert.match(linkProblem('contradicts', fact, question, false), /только между выводами/);
   assert.equal(linkProblem('answers', fact, question, false), '');
   assert.match(linkProblem('answers', question, fact, false), /от вывода к вопросу/);

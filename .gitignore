@@ -13,3 +13,10 @@ exports/
 .DS_Store
 Thumbs.db
 private/
+# сгенерированный клиент базы: npm run db:generate
+apps/server/src/generated/
+# реальные данные бюро — только на сервере или у руководителя
+*.xlsx
+*.csv
+*.dump
+deploy/.env

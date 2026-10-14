@@ -5,12 +5,12 @@ import type { Status } from './enums.ts';
 
 export interface QueueItem {
   number: number;
-  status: Status;
+  status: Status | (string & {});
   requestsCount: number;
   created: Date;
 }
 
-export const inQueue = (status: Status) => status === 'pending' || status === 'disputed';
+export const inQueue = (status: string) => status === 'pending' || status === 'disputed';
 
 function group(item: QueueItem): number {
   if (item.status === 'disputed') return 0;
