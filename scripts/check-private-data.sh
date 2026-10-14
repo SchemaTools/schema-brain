@@ -7,7 +7,9 @@ set -euo pipefail
 export LC_ALL=C.UTF-8
 cd "$(git rev-parse --show-toplevel)"
 
-files=$(git ls-files | grep -vE '^scripts/check-private-data\.sh$' || true)
+# package-lock.json — служебный файл npm (адреса пакетов и сообщения авторов пакетов), не наши данные
+# вместе с новыми, ещё не добавленными в git файлами (кроме игнорируемых): проверка до git add тоже честная
+files=$(git ls-files --cached --others --exclude-standard | sort -u | grep -vE '^(scripts/check-private-data\.sh|package-lock\.json)$' || true)
 [ -z "$files" ] && exit 0
 
 fail=0

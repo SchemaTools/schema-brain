@@ -39,10 +39,24 @@ const lookup = (table, value) =>
   table[value] ?? (Object.values(table).includes(value) ? value : undefined);
 
 /**
+ * @typedef {object} ParsedRecord — запись с кодами сервиса
+ * @property {'conclusion' | 'question'} type
+ * @property {'fact' | 'rule' | 'hypothesis' | null} kind
+ * @property {'design' | 'bim' | 'process' | 'tools'} core
+ * @property {string | null} project
+ * @property {string | null} software_version
+ * @property {string | null} not_applicable
+ * @property {string} source
+ * @property {true} confirmed_by_author
+ * @property {string} created
+ * @property {string} text
+ */
+
+/**
  * Разбирает текст md-записи.
  * @param {string} source — содержимое файла
  * @param {string} [fileName] — имя файла, для проверки вида имени
- * @returns {{ record: object | null, errors: string[], warnings: string[] }}
+ * @returns {{ record: ParsedRecord | null, errors: string[], warnings: string[] }}
  */
 export function parseRecord(source, fileName) {
   const errors = [];
