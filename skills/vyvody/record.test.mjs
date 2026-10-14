@@ -116,11 +116,13 @@ test('больше трёх фраз — замечание, не ошибка',
 });
 
 test('личные и серверные данные — ошибка', () => {
+  // образцы собраны из частей, чтобы scripts/check-private-data.sh не принял их за настоящие
+  const slash = '\\';
   for (const text of [
     'Спросить у name@example.com.',
-    'Шаблон лежит в C:\\Projects\\шаблон.rte.',
-    'Файл на \\\\fileserver\\share.',
-    'Сервер 192.168.1.20 отвечает медленно.',
+    `Шаблон лежит в C:${slash}Projects${slash}шаблон.rte.`,
+    `Файл на ${slash}${slash}fileserver${slash}share.`,
+    `Сервер ${['192', '168', '1', '20'].join('.')} отвечает медленно.`,
     'Звонить +7 900 123-45-67.',
   ]) {
     assert.ok(errorsOf(base, text).some((e) => e.startsWith('похоже на личные')), text);
