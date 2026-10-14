@@ -1,0 +1,36 @@
+{
+  "manifest_version": "0.3",
+  "name": "schema-brain",
+  "display_name": "Schema Brain",
+  "version": "0.1.0",
+  "description": "Общая память ИИ-агентов бюро Schema: поиск выводов коллег по ходу задачи, отправка выводов и открытых вопросов после «ок» сотрудника, отметки «сработало / не сработало»; модератору — очередь, решения и разбор",
+  "author": { "name": "Бюро Schema" },
+  "server": {
+    "type": "node",
+    "entry_point": "server.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.mjs"],
+      "env": {
+        "SB_URL": "${user_config.server_url}",
+        "SB_TOKEN": "${user_config.access_token}"
+      }
+    }
+  },
+  "user_config": {
+    "server_url": {
+      "type": "string",
+      "title": "Адрес Schema Brain",
+      "description": "Как в браузере, например http://адрес-сервера:порт — даёт модератор",
+      "required": true
+    },
+    "access_token": {
+      "type": "string",
+      "title": "Токен доступа",
+      "description": "Выдаёт модератор, начинается с sbt_",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": { "runtimes": { "node": ">=18.0.0" } }
+}
