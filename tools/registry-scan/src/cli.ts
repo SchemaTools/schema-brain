@@ -20,7 +20,7 @@ const { values, positionals } = parseArgs({
     min: { type: 'string', default: String(DEFAULTS.minAlbums) },
     threshold: { type: 'string', default: String(DEFAULTS.threshold) },
     records: { type: 'string' },
-    date: { type: 'string', default: new Date().toISOString().slice(0, 10) },
+    date: { type: 'string', default: new Date().toLocaleDateString('sv-SE') }, // ГГГГ-ММ-ДД по местному времени
   },
 });
 

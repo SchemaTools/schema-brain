@@ -23,4 +23,12 @@
 | `deploy/` | `docker-compose.yml`, `.env.example`, установка по SSH | 4 |
 | `scripts/` | служебные скрипты, в том числе проверка на реальные данные | 1 |
 
-Стек — как у Schema Teams: TypeScript, Node.js 22, Fastify, Prisma, PostgreSQL 16 + pgvector, React + Vite, Vitest.
+Стек — как у Schema Teams: TypeScript (запускается без сборки, Node.js 22.18+), Fastify, Prisma, PostgreSQL 16 + pgvector, React + Vite; тесты — `node --test`.
+
+## Разработка
+
+```bash
+npm install && npm run check
+```
+
+`check` — генерация клиента базы, проверка типов, тесты (с временной PostgreSQL), проверка на реальные данные. Установка на сервер — `deploy/README.md`.

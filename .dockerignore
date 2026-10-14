@@ -1,0 +1,6 @@
+node_modules
+.git
+apps/server/src/generated
+deploy/.env
+private
+*.dump
