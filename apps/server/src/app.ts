@@ -36,7 +36,8 @@ export function buildApp(opts: AppOptions) {
   app.register(cookie);
   if (opts.webDir && existsSync(opts.webDir)) {
     const webDir = opts.webDir;
-    app.register(fastifyStatic, { root: webDir, wildcard: false });
+    // wildcard: true — файлы ищутся на диске при каждом запросе (а не только те, что были при запуске)
+    app.register(fastifyStatic, { root: webDir, wildcard: true });
     // адреса веба — через #, но на всякий случай любой не-API адрес отдаёт страницу приложения
     app.setNotFoundHandler((request, reply) => {
       if (request.method === 'GET' && !request.url.startsWith('/api/')) return reply.sendFile('index.html', webDir);
