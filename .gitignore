@@ -12,3 +12,4 @@ data/
 exports/
 .DS_Store
 Thumbs.db
+private/
