@@ -272,6 +272,20 @@ describe('сервис', () => {
     assert.doesNotMatch(page, /в спецификации ставим по помещению/, 'заменённое правило не попадает');
   });
 
+  test('веб: страница приложения на любом не-API адресе; неизвестный API — 404', async () => {
+    const webDir = mkdtempSync(join(tmpdir(), 'brain-web-'));
+    writeFileSync(join(webDir, 'index.html'), '<!doctype html><title>Schema Brain</title>');
+    const web = buildApp({ db, version: 'test', webDir });
+    const page = await web.inject({ method: 'GET', url: '/' });
+    assert.equal(page.statusCode, 200);
+    assert.match(page.body, /<title>Schema Brain<\/title>/);
+    assert.match((await web.inject({ method: 'GET', url: '/queue' })).body, /Schema Brain/);
+    const api = await web.inject({ method: 'GET', url: '/api/nothing' });
+    assert.equal(api.statusCode, 404);
+    assert.equal(api.json().error, 'not_found');
+    await web.close();
+  });
+
   test('не больше N отправок в час с одного токена', async () => {
     const limited = buildApp({ db, version: 'test', proposeLimit: 2 });
     const send = () =>

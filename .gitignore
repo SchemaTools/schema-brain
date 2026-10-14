@@ -20,3 +20,4 @@ apps/server/src/generated/
 *.csv
 *.dump
 deploy/.env
+.claude/

@@ -32,3 +32,11 @@ npm install && npm run check
 ```
 
 `check` — генерация клиента базы, проверка типов, тесты (с временной PostgreSQL), проверка на реальные данные. Установка на сервер — `deploy/README.md`.
+
+Посмотреть вживую без Docker:
+
+```bash
+npm run web:build && npm run dev:local
+```
+
+Откроется http://127.0.0.1:3000 — временная база в `private/` с несколькими вымышленными записями; токен модератора для входа — в `private/dev-token.txt`. Начать с чистой базы — `npm run dev:local -- --reset`.

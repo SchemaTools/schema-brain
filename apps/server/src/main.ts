@@ -7,7 +7,7 @@ import { migrate } from './db/migrate.ts';
 const config = loadConfig();
 const applied = await migrate(config.databaseUrl, config.migrationsDir);
 const db = createDb(config.databaseUrl);
-const app = buildApp({ db, version: config.version, cookieSecure: config.cookieSecure, logger: { level: config.logLevel } });
+const app = buildApp({ db, version: config.version, cookieSecure: config.cookieSecure, webDir: config.webDir, logger: { level: config.logLevel } });
 if (applied.length) app.log.info({ applied }, 'миграции применены');
 
 const stop = async () => {

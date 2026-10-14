@@ -11,6 +11,7 @@ export interface Config {
   cookieSecure: boolean;
   logLevel: string;
   migrationsDir: string;
+  webDir: string;
   version: string;
 }
 
@@ -28,6 +29,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cookieSecure: env['COOKIE_SECURE'] === 'true',
     logLevel: env['LOG_LEVEL'] ?? 'info',
     migrationsDir: env['MIGRATIONS_DIR'] ?? `${root}prisma/migrations`,
+    webDir: env['WEB_DIR'] ?? `${root}apps/web/dist`,
     version: VERSION,
   };
 }

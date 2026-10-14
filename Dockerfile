@@ -1,7 +1,8 @@
-# Образ сервиса Schema Brain: API и команды (apps/server/src/cli.ts).
-# TypeScript запускается без сборки (Node.js 24); клиент Prisma генерируется при сборке образа.
+# Образ сервиса Schema Brain: API, веб и команды (apps/server/src/cli.ts).
+# TypeScript сервиса запускается без сборки (Node.js 24); при сборке образа генерируется
+# клиент базы и собирается веб.
 
-# ---------- генерация клиента базы ----------
+# ---------- клиент базы и веб ----------
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -9,6 +10,8 @@ RUN npm ci
 COPY prisma prisma
 COPY prisma.config.ts ./
 RUN npx prisma generate
+COPY apps/web apps/web
+RUN npx vite build apps/web
 
 # ---------- зависимости продукта ----------
 FROM node:24-bookworm-slim AS deps
@@ -29,6 +32,7 @@ COPY packages/core/src packages/core/src
 COPY skills/vyvody/record.mjs skills/vyvody/record.mjs
 COPY apps/server/src apps/server/src
 COPY --from=build /app/apps/server/src/generated apps/server/src/generated
+COPY --from=build /app/apps/web/dist apps/web/dist
 COPY prisma/migrations prisma/migrations
 
 USER node

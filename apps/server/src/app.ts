@@ -1,6 +1,8 @@
 // HTTP API (docs/spec.md, раздел 8). Токен — «Authorization: Bearer sbt_…» или cookie сеанса веба.
 // Ответы — JSON; у ответов для агента есть поле text — готовые короткие строки (раздел 7).
+import { existsSync } from 'node:fs';
 import cookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { bearer } from '../../../packages/core/src/index.ts';
 import { AppError, type Ctx, need } from './context.ts';
@@ -16,6 +18,8 @@ export interface AppOptions {
   logger?: false | { level: string };
   /** отправок в час с одного токена (раздел 12) */
   proposeLimit?: number;
+  /** папка собранного веба (apps/web/dist); нет папки — только API */
+  webDir?: string;
 }
 
 const SESSION_COOKIE = 'sb_session';
@@ -30,6 +34,15 @@ export function buildApp(opts: AppOptions) {
   const { db } = opts;
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 64 * 1024 });
   app.register(cookie);
+  if (opts.webDir && existsSync(opts.webDir)) {
+    const webDir = opts.webDir;
+    app.register(fastifyStatic, { root: webDir, wildcard: false });
+    // адреса веба — через #, но на всякий случай любой не-API адрес отдаёт страницу приложения
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === 'GET' && !request.url.startsWith('/api/')) return reply.sendFile('index.html', webDir);
+      return reply.status(404).send({ error: 'not_found', message: 'Нет такого адреса' });
+    });
+  }
 
   const proposals = new Map<string, number[]>();
   const proposeLimit = opts.proposeLimit ?? 30;
