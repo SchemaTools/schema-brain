@@ -34,6 +34,8 @@ services:
       DATABASE_URL: postgresql://schema_brain:${POSTGRES_PASSWORD}@db:5432/schema_brain
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      SCHEMA_TEAMS_URL: ${SCHEMA_TEAMS_URL:-}
+      SCHEMA_TEAMS_TOKEN: ${SCHEMA_TEAMS_TOKEN:-}
       TZ: ${TIMEZONE:-UTC}
     ports:
       - '${APP_PORT:?не задан APP_PORT в deploy/.env}:3000'

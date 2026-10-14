@@ -8,6 +8,7 @@ import { bearer } from '../../../packages/core/src/index.ts';
 import { AppError, type Ctx, need } from './context.ts';
 import type { Db } from './db/client.ts';
 import { closeSession, listPersons, addPerson, issueToken, openSession, revokeToken, authenticate, sessionCtx } from './services/people.ts';
+import { type SchemaTeamsOptions, syncProjects } from './services/projects.ts';
 import * as records from './services/records.ts';
 
 export interface AppOptions {
@@ -20,6 +21,8 @@ export interface AppOptions {
   proposeLimit?: number;
   /** папка собранного веба (apps/web/dist); нет папки — только API */
   webDir?: string;
+  /** Schema Teams для синхронизации проектов по кнопке */
+  schemaTeams?: SchemaTeamsOptions | null;
 }
 
 const SESSION_COOKIE = 'sb_session';
@@ -199,6 +202,13 @@ export function buildApp(opts: AppOptions) {
       orderBy: { code: 'asc' },
       select: { code: true, name: true },
     });
+  });
+  app.post('/api/projects/sync', async (request) => {
+    need(await auth(request), 'moderate');
+    if (!opts.schemaTeams) {
+      throw new AppError(400, 'not_configured', 'Schema Teams не настроен: в deploy/.env нужны SCHEMA_TEAMS_URL и SCHEMA_TEAMS_TOKEN');
+    }
+    return syncProjects(db, opts.schemaTeams);
   });
   app.get('/api/software', async (request) => {
     await auth(request);

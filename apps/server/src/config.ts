@@ -12,6 +12,8 @@ export interface Config {
   logLevel: string;
   migrationsDir: string;
   webDir: string;
+  /** Schema Teams для списка проектов; пусто — проекты добавляются вручную */
+  schemaTeams: { url: string; token: string } | null;
   version: string;
 }
 
@@ -30,6 +32,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: env['LOG_LEVEL'] ?? 'info',
     migrationsDir: env['MIGRATIONS_DIR'] ?? `${root}prisma/migrations`,
     webDir: env['WEB_DIR'] ?? `${root}apps/web/dist`,
+    schemaTeams:
+      env['SCHEMA_TEAMS_URL'] && env['SCHEMA_TEAMS_TOKEN']
+        ? { url: env['SCHEMA_TEAMS_URL'], token: env['SCHEMA_TEAMS_TOKEN'] }
+        : null,
     version: VERSION,
   };
 }

@@ -286,6 +286,40 @@ describe('сервис', () => {
     await web.close();
   });
 
+  test('проекты из Schema Teams: новые, обновлённые, снятые; ручные не трогаются; имена не читаются', async () => {
+    const { syncProjects } = await import('../src/services/projects.ts');
+    await db.project.create({ data: { code: 'РУЧНОЙ-1', name: 'добавлен вручную' } });
+    let objects: object[] = [
+      { id: 101, code: '01/2026-01', name: 'Объект А', client: 'Заказчик', gip: { name: 'Иванова И.И.' } },
+      { id: 102, code: '01/2026-02', name: 'Объект Б' },
+    ];
+    const fake = (async (url: string, init: RequestInit) => {
+      assert.match(String(url), /\/api\/objects\?status=active$/);
+      assert.equal((init.headers as Record<string, string>).authorization, 'Bearer stt_тест');
+      return new Response(JSON.stringify({ objects, counts: null }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const opts = { url: 'http://schema-teams.test/', token: 'stt_тест', fetch: fake };
+
+    assert.equal((await syncProjects(db, opts)).text, 'Проекты из Schema Teams: новых 2, обновлено 0, неактивных 0');
+    objects = [{ id: 101, code: '01/2026-01', name: 'Объект А (переименован)' }];
+    assert.equal((await syncProjects(db, opts)).text, 'Проекты из Schema Teams: новых 0, обновлено 1, неактивных 1');
+
+    const projects = await db.project.findMany({ orderBy: { code: 'asc' }, where: { code: { in: ['01/2026-01', '01/2026-02', 'РУЧНОЙ-1'] } } });
+    assert.deepEqual(
+      projects.map((p) => [p.code, p.name, p.active]),
+      [['01/2026-01', 'Объект А (переименован)', true], ['01/2026-02', 'Объект Б', false], ['РУЧНОЙ-1', 'добавлен вручную', true]],
+    );
+    const listed = await call('автор', 'GET', '/api/projects');
+    assert.ok(!JSON.stringify(listed.body).includes('Иванова'));
+    assert.ok(!listed.body.some((p: { code: string }) => p.code === '01/2026-02'), 'неактивный не показывается');
+
+    const denied = (async () => new Response('{}', { status: 401 })) as unknown as typeof fetch;
+    await assert.rejects(() => syncProjects(db, { ...opts, fetch: denied }), /не принял токен/);
+    const button = await call('moderator', 'POST', '/api/projects/sync');
+    assert.equal(button.status, 400);
+    assert.match(button.body.message, /Schema Teams не настроен/);
+  });
+
   test('не больше N отправок в час с одного токена', async () => {
     const limited = buildApp({ db, version: 'test', proposeLimit: 2 });
     const send = () =>
