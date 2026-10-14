@@ -4,13 +4,25 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
-    "test": "node --test \"skills/**/*.test.mjs\"",
+    "test": "node --test \"skills/**/*.test.mjs\" \"tools/**/*.test.ts\"",
+    "typecheck": "tsc -p .",
     "skill:pack": "node skills/vyvody/pack.mjs",
     "skill:check": "node skills/vyvody/check.mjs",
+    "registry:scan": "node tools/registry-scan/src/cli.ts",
     "privacy": "bash scripts/check-private-data.sh",
-    "check": "npm run test && npm run privacy"
+    "check": "npm run typecheck && npm run test && npm run privacy"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
