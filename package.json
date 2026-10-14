@@ -16,7 +16,8 @@
     "skill:check": "node skills/vyvody/check.mjs",
     "registry:scan": "node tools/registry-scan/src/cli.ts",
     "privacy": "bash scripts/check-private-data.sh",
-    "check": "npm run db:generate && npm run typecheck && npm run test && npm run privacy"
+    "check": "npm run db:generate && npm run typecheck && npm run test && npm run privacy",
+    "mcp:pack": "node tools/brain-mcp/pack.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
