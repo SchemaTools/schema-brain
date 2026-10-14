@@ -8,6 +8,7 @@ import { createDb } from './db/client.ts';
 import { migrate } from './db/migrate.ts';
 import { exportDataset, importFolder, wikiPage } from './services/exchange.ts';
 import { addPerson, findPerson, issueToken, listPersons, revokeToken } from './services/people.ts';
+import { syncProjects } from './services/projects.ts';
 import { setSoftware } from './services/records.ts';
 
 const HELP = `Команды Schema Brain:
@@ -18,7 +19,8 @@ const HELP = `Команды Schema Brain:
   token issue <ярлык> <клиент> [--scopes read,propose] [--note текст]
                                             выпустить токен: клиент — web, claude, chatgpt, codex, local
   token revoke <id>                         отозвать токен
-  project add <код> [название]              добавить проект вручную (пока нет синхронизации со Schema Teams)
+  project add <код> [название]              добавить проект вручную
+  project sync                              проекты из Schema Teams (SCHEMA_TEAMS_URL, SCHEMA_TEAMS_TOKEN)
   software set <продукт> <версия>           текущая версия — пометка «проверить» у записей с другой
   import-md <папка> --person <ярлык>        импорт md-записей шага 0 одного сотрудника
   export-dataset <папка>                    датасет JSONL для дообучения
@@ -84,6 +86,11 @@ try {
       } else console.log(HELP);
       break;
     case 'project': {
+      if (sub === 'sync') {
+        if (!config.schemaTeams) throw new AppError(400, 'invalid', 'Не заданы SCHEMA_TEAMS_URL и SCHEMA_TEAMS_TOKEN');
+        console.log((await syncProjects(db, config.schemaTeams)).text);
+        break;
+      }
       if (sub !== 'add') {
         console.log(HELP);
         break;

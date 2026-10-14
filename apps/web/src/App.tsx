@@ -658,6 +658,17 @@ function Settings() {
       </section>
 
       <section className="card">
+        <p className="lab">Проекты</p>
+        <p className="muted">Список объектов берётся из Schema Teams раз в час; можно обновить сейчас.</p>
+        <button
+          className="btn"
+          onClick={() => void run(() => api<{ text: string }>('POST', '/api/projects/sync').then((r) => setInfo(r.text)), () => {})}
+        >
+          Обновить из Schema Teams
+        </button>
+      </section>
+
+      <section className="card">
         <p className="lab">Сотрудники и токены</p>
         <p className="muted">Ярлык — обезличенный («проектировщик АР-2»). У каждого агента сотрудника — свой токен.</p>
         <form
