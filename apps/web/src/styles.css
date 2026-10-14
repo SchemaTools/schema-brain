@@ -400,3 +400,57 @@ td {
     border-top: 1px solid var(--line);
   }
 }
+
+/* граф */
+.graph-wrap {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 16px;
+  align-items: start;
+}
+.graph {
+  height: 70vh;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.graph-side {
+  margin: 0;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.dot.hyp {
+  border: 2px dashed var(--ink);
+  background: #a9adb1;
+}
+.line {
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  border-top: 2px solid var(--ink3);
+}
+.line.red {
+  border-top: 2px dashed var(--bad);
+}
+.line.green {
+  border-top-color: var(--pos);
+}
+@media (max-width: 800px) {
+  .graph-wrap {
+    grid-template-columns: 1fr;
+  }
+  .graph {
+    height: 60vh;
+  }
+}

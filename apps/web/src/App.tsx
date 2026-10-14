@@ -1,7 +1,9 @@
 // Веб Schema Brain (docs/spec.md, раздел 11): вход по токену, записи, карточка, новая запись,
 // вопросы, очередь модерации, настройки. Адреса — через # (#/r/12), без библиотеки маршрутов.
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, lazy, type ReactNode, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, ApiError, CORES, EVENT, KIND, LINK, type Me, qs, type RecordView } from './api.ts';
+// граф — отдельным файлом: библиотека графов грузится, только когда граф открывают
+const GraphPage = lazy(() => import('./Graph.tsx').then((m) => ({ default: m.GraphPage })));
 
 // --- маршрут ---------------------------------------------------------------
 
@@ -314,7 +316,9 @@ function CardPage({ number, me }: { number: number; me: Me }) {
         </dl>
         {data.links.length ? (
           <>
-            <p className="lab">Связи</p>
+            <p className="lab">
+              Связи · <a href={`#/graph?center=${r.number}&depth=2`}>на графе</a>
+            </p>
             <ul className="plain">
               {data.links.map((l) => (
                 <li key={l.id}>
@@ -741,6 +745,7 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
           {link('#/', 'Записи', path === '/' || path.startsWith('/r/'))}
           {link('#/new', 'Новая запись', path === '/new')}
           {link('#/questions', 'Вопросы', path === '/questions')}
+          {link('#/graph', 'Граф', path === '/graph')}
           {moderator ? link('#/queue', 'Очередь', path === '/queue') : null}
           {moderator ? link('#/settings', 'Настройки', path === '/settings') : null}
         </nav>
@@ -770,6 +775,12 @@ export function App() {
   if (card) page = <CardPage number={Number(card[1])} me={me} />;
   else if (path === '/new') page = <NewRecord params={params} />;
   else if (path === '/questions') page = <Questions />;
+  else if (path === '/graph')
+    page = (
+      <Suspense fallback={<p className="muted">Загрузка графа…</p>}>
+        <GraphPage params={params} />
+      </Suspense>
+    );
   else if (path === '/queue') page = <Queue />;
   else if (path === '/settings') page = <Settings />;
   else page = <Records params={params} />;
