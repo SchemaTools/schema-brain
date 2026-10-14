@@ -4,3 +4,4 @@ apps/server/src/generated
 deploy/.env
 private
 *.dump
+apps/web/dist

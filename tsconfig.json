@@ -14,5 +14,5 @@
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "include": ["packages/**/*.ts", "apps/server/**/*.ts", "tools/**/*.ts", "tools/**/*.mjs", "skills/**/*.mjs"]
+  "include": ["packages/**/*.ts", "apps/server/**/*.ts", "scripts/**/*.ts", "tools/**/*.ts", "tools/**/*.mjs", "skills/**/*.mjs"]
 }
