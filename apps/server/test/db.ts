@@ -45,7 +45,8 @@ export async function startDb(): Promise<{ url: string; stop: () => Promise<void
     url,
     stop: async () => {
       await pg.stop();
-      rmSync(dir, { recursive: true, force: true });
+      // Windows отпускает файлы базы не сразу после остановки — несколько попыток
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     },
   };
 }
