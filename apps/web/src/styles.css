@@ -152,6 +152,18 @@ nav a.active {
   color: var(--ink);
   font-weight: 600;
 }
+nav .count {
+  margin-left: 4px;
+  padding: 0 5px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.meta .author {
+  margin-left: auto;
+}
 .who {
   display: flex;
   align-items: center;
