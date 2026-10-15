@@ -69,7 +69,17 @@ function Badge({ r }: { r: RecordView }) {
 function Trust({ r }: { r: RecordView }) {
   if (r.type !== 'conclusion') return null;
   const bad = r.trust.startsWith('ложная');
-  return <span className={`trust${bad ? ' bad' : ''}`}>{r.trust}</span>;
+  // состояние без «N за, M против» — числа показаны отдельными счётчиками
+  const state = r.trust.split(' · ')[0];
+  return (
+    <>
+      <span className="marks" title="Отметки «сработало / не сработало» от разных людей">
+        <span className={`worked${r.worked ? ' has' : ''}`}>✓ сработало {r.worked}</span>
+        <span className={`failed${r.failed ? ' has' : ''}`}>✕ не сработало {r.failed}</span>
+      </span>
+      {r.worked + r.failed ? <span className={`trust${bad ? ' bad' : ''}`}>{state}</span> : null}
+    </>
+  );
 }
 
 function Row({ r }: { r: RecordView }) {
@@ -203,6 +213,8 @@ function Records({ params }: { params: URLSearchParams }) {
           <option value="">По номеру</option>
           <option value="author">По автору</option>
           <option value="requests">Чаще запрашивали агенты</option>
+          <option value="worked">Больше «сработало»</option>
+          <option value="failed">Больше «не сработало»</option>
           <option value="new">Сначала новые</option>
         </select>
         <button className="btn">Найти</button>

@@ -605,7 +605,7 @@ export interface ListInput {
   needsCheck?: boolean;
   /** ярлык автора */
   author?: string;
-  /** порядок: number — по номеру (по умолчанию), author — по автору, requests — чаще запрашивали агенты, new — сначала новые */
+  /** порядок: number — по номеру (по умолчанию), author — по автору, requests — чаще запрашивали агенты, worked / failed — больше «сработало» / «не сработало», new — сначала новые */
   sort?: string;
 }
 
@@ -613,6 +613,8 @@ const LIST_ORDER: Record<string, Prisma.RecordOrderByWithRelationInput[]> = {
   number: [{ number: 'asc' }],
   author: [{ author: { label: 'asc' } }, { number: 'asc' }],
   requests: [{ requestsCount: 'desc' }, { number: 'asc' }],
+  worked: [{ worked: 'desc' }, { failed: 'asc' }, { number: 'asc' }],
+  failed: [{ failed: 'desc' }, { worked: 'asc' }, { number: 'asc' }],
   new: [{ created: 'desc' }, { number: 'desc' }],
 };
 
@@ -639,7 +641,7 @@ export async function list(db: Db, ctx: Ctx, input: ListInput) {
   if (input.needsCheck) where.needsCheck = true;
   if (input.author?.trim()) where.author = { label: input.author.trim() };
   const orderBy = LIST_ORDER[input.sort || 'number'];
-  if (!orderBy) throw invalid('sort: number, author, requests или new');
+  if (!orderBy) throw invalid('sort: number, author, requests, worked, failed или new');
   if (input.q?.trim()) {
     const words = parseQuery(input.q).phrasings.flat();
     if (words.length) {
