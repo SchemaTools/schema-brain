@@ -209,6 +209,29 @@ describe('сервис', () => {
     assert.match(r.body.text, /^№ \d+ · факт · принята · /m);
   });
 
+  test('список: фильтр и сортировка по автору, авторы с числом записей', async () => {
+    const mine = await call('коллега 1', 'GET', '/api/records?author=коллега 1');
+    assert.ok(mine.body.total >= 1);
+    assert.ok(mine.body.records.every((r: any) => r.author === 'коллега 1'));
+    const sorted = (await call('moderator', 'GET', '/api/records?sort=author')).body.records.map((r: any) => r.author);
+    assert.deepEqual(sorted, [...sorted].sort((x: string, y: string) => x.localeCompare(y, 'ru')));
+    const fresh = (await call('moderator', 'GET', '/api/records?sort=new')).body.records.map((r: any) => r.number);
+    assert.deepEqual(fresh, [...fresh].sort((x: number, y: number) => y - x));
+    assert.equal((await call('moderator', 'GET', '/api/records?sort=вбок')).status, 400);
+    const authors = (await call('коллега 2', 'GET', '/api/authors')).body;
+    const total = (await call('moderator', 'GET', '/api/records')).body.total;
+    assert.equal(authors.reduce((s: number, a: any) => s + a.records, 0), total);
+  });
+
+  test('очередь: всего ждут и первые по лимиту', async () => {
+    await call('автор', 'POST', '/api/records', fact('Первая запись для счёта очереди.'));
+    await call('автор', 'POST', '/api/records', fact('Вторая запись для счёта очереди.'));
+    const q = (await call('moderator', 'GET', '/api/queue?limit=1')).body;
+    assert.ok(q.total >= 2);
+    assert.equal(q.records.length, 1);
+    assert.match(q.text, new RegExp(`всего в очереди ${q.total}`));
+  });
+
   test('поиск: «B25» латиницей находит «В25»', async () => {
     const n = (await call('автор', 'POST', '/api/records', fact('Класс бетона В25 для фундаментной плиты по умолчанию.', { core: 'Проектирование' }))).body.record.number;
     await call('moderator', 'POST', `/api/records/${n}/moderate`, { decision: 'accept' });

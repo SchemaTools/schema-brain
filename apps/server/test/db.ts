@@ -33,7 +33,8 @@ export async function startDb(): Promise<{ url: string; stop: () => Promise<void
     port,
     user: 'test',
     password: 'test',
-    persistent: false,
+    // папку удаляем сами в stop(): удаление внутри библиотеки падает на Windows с EBUSY
+    persistent: true,
     onLog: () => {},
   });
   await pg.initialise();
@@ -45,8 +46,13 @@ export async function startDb(): Promise<{ url: string; stop: () => Promise<void
     url,
     stop: async () => {
       await pg.stop();
-      // Windows отпускает файлы базы не сразу после остановки — несколько попыток
-      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      // Windows отпускает файлы базы не сразу после остановки — несколько попыток;
+      // не удалилась — остаётся во временной папке системы, на результат тестов это не влияет
+      try {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch (error) {
+        console.warn(`Временная база не удалена: ${dir} (${(error as NodeJS.ErrnoException).code})`);
+      }
     },
   };
 }
