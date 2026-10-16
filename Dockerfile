@@ -14,10 +14,13 @@ COPY apps/web apps/web
 RUN npx vite build apps/web
 
 # ---------- зависимости продукта ----------
+# --omit=optional: иначе в образ попадает служебная программа prisma (необязательная зависимость
+# @prisma/client) с уязвимыми mysql2 и deepmerge-ts; из рабочих необязательных пакетов отпадает
+# только pg-cloudflare — для Cloudflare Workers, сервису не нужен
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev --omit=optional --ignore-scripts
 
 # ---------- образ ----------
 FROM node:24-bookworm-slim
