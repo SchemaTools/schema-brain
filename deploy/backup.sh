@@ -22,7 +22,7 @@ compose() { docker compose -f "$repo/deploy/docker-compose.yml" --env-file "$env
 
 mkdir -p "$dir"
 chmod 700 "$dir"
-file="$dir/schema-brain-$(date +%F-%H%M).dump"
+file="$dir/schema-brain-$(date +%F-%H%M%S).dump"
 tmp="$file.part"
 trap 'rm -f "$tmp"' EXIT
 
