@@ -136,8 +136,20 @@ git pull && docker compose -f deploy/docker-compose.yml --env-file deploy/.env u
 
 ## Резервная копия
 
+Копия базы — скриптом: он делает дамп, проверяет, что копия читается, и оставляет только последние копии (по умолчанию 14). Папка копий — `~/schema-brain-backups`, вне репозитория; другие значения — `BACKUP_DIR` и `BACKUP_KEEP` в `deploy/.env`.
+
 ```bash
-docker compose -f deploy/docker-compose.yml exec -T db pg_dump -U schema_brain -Fc schema_brain > schema-brain-$(date +%F).dump
+deploy/backup.sh
 ```
 
-Копии хранить вне папки репозитория.
+Ночная копия — строкой в `crontab -e` пользователя, который запускает Docker (здесь — в 02:30 по времени сервера; `<папка репозитория>` — полный путь):
+
+```
+30 2 * * * <папка репозитория>/deploy/backup.sh >> $HOME/schema-brain-backups/backup.log 2>&1
+```
+
+Восстановление в работающую базу (данные базы заменяются копией):
+
+```bash
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T db pg_restore -U schema_brain -d schema_brain --clean --if-exists < <файл копии>
+```
