@@ -85,6 +85,8 @@ function Row({ r }: { r: RecordView }) {
           <Trust r={r} />
           {r.needsCheck ? <span className="status s-check">проверить</span> : null}
           {r.type === 'question' && r.askedCount ? <span>спросили ещё {r.askedCount}</span> : null}
+          {r.requestsCount ? <span>запрашивали агенты: {r.requestsCount}</span> : null}
+          <span className="author">{r.author}</span>
         </span>
         <span className="text">{r.text}</span>
       </span>
@@ -134,8 +136,11 @@ function Records({ params }: { params: URLSearchParams }) {
     type: params.get('type') ?? '',
     status: params.get('status') ?? '',
     needs_check: params.get('needs_check') === 'true',
+    author: params.get('author') ?? '',
+    sort: params.get('sort') ?? '',
     page: Number(params.get('page') ?? 1),
   };
+  const authors = useLoad(() => api<{ label: string; records: number }[]>('GET', '/api/authors'), []);
   const set = (patch: Partial<typeof filters>) => {
     const next = { ...filters, page: 1, ...patch };
     go(`/${qs(next)}`);
@@ -186,12 +191,29 @@ function Records({ params }: { params: URLSearchParams }) {
           <input type="checkbox" checked={filters.needs_check} onChange={(e) => set({ needs_check: e.target.checked })} />
           проверить
         </label>
+        <select value={filters.author} onChange={(e) => set({ author: e.target.value })}>
+          <option value="">Все авторы</option>
+          {(authors.data ?? []).map((a) => (
+            <option key={a.label} value={a.label}>
+              {a.label} — {a.records}
+            </option>
+          ))}
+        </select>
+        <select value={filters.sort} onChange={(e) => set({ sort: e.target.value })}>
+          <option value="">По номеру</option>
+          <option value="author">По автору</option>
+          <option value="requests">Чаще запрашивали агенты</option>
+          <option value="new">Сначала новые</option>
+        </select>
         <button className="btn">Найти</button>
       </form>
       <Errors error={error} />
       {data ? (
         <>
-          <p className="lab">Найдено: {data.total}</p>
+          <p className="lab">
+            Найдено: {data.total}
+            {data.total > 50 ? ` · показаны ${(data.page - 1) * 50 + 1}–${Math.min(data.page * 50, data.total)}` : ''}
+          </p>
           <div className="list">
             {data.records.map((r) => (
               <Row key={r.number} r={r} />
@@ -569,15 +591,35 @@ function Questions() {
 }
 
 function Queue() {
-  const { data, error } = useLoad(() => api<{ records: RecordView[] }>('GET', '/api/queue'), []);
+  const { data, error } = useLoad(() => api<{ total: number; records: RecordView[] }>('GET', '/api/queue?limit=500'), []);
+  const [author, setAuthor] = useState('');
+  const records = data?.records ?? [];
+  const byAuthor = new Map<string, number>();
+  for (const r of records) byAuthor.set(r.author, (byAuthor.get(r.author) ?? 0) + 1);
+  const shown = author ? records.filter((r) => r.author === author) : records;
   return (
     <>
       <div className="head">
-        <h1>Очередь модерации</h1>
+        <h1>Очередь модерации{data ? ` · ${data.total}` : ''}</h1>
       </div>
       <p className="muted">Сначала противоречия, затем записи, которые уже запрашивали агенты, затем остальные.</p>
+      {byAuthor.size > 1 ? (
+        <div className="filters">
+          <select value={author} onChange={(e) => setAuthor(e.target.value)}>
+            <option value="">Все авторы — {records.length}</option>
+            {[...byAuthor]
+              .sort((a, b) => a[0].localeCompare(b[0], 'ru'))
+              .map(([label, n]) => (
+                <option key={label} value={label}>
+                  {label} — {n}
+                </option>
+              ))}
+          </select>
+        </div>
+      ) : null}
       <Errors error={error} />
-      <div className="list">{data ? (data.records.length ? data.records.map((r) => <Row key={r.number} r={r} />) : <p className="muted">Очередь пуста.</p>) : null}</div>
+      {data && data.total > records.length ? <p className="lab">Показаны первые {records.length} из {data.total}</p> : null}
+      <div className="list">{data ? (shown.length ? shown.map((r) => <Row key={r.number} r={r} />) : <p className="muted">Очередь пуста.</p>) : null}</div>
     </>
   );
 }
@@ -741,9 +783,15 @@ function Settings() {
 function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogout: () => void }) {
   const moderator = me.scopes.includes('moderate');
   const [path] = useRoute();
-  const link = (href: string, label: string, active: boolean) => (
+  // число записей в очереди — пересчитывается при переходах между страницами
+  const waiting = useLoad(
+    () => (moderator ? api<{ total: number }>('GET', '/api/queue?limit=1') : Promise.resolve({ total: 0 })),
+    [path, moderator],
+  );
+  const link = (href: string, label: string, active: boolean, count?: number) => (
     <a href={href} className={active ? 'active' : ''}>
       {label}
+      {count ? <span className="count">{count}</span> : null}
     </a>
   );
   return (
@@ -757,7 +805,7 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
           {link('#/new', 'Новая запись', path === '/new')}
           {link('#/questions', 'Вопросы', path === '/questions')}
           {link('#/graph', 'Граф', path === '/graph')}
-          {moderator ? link('#/queue', 'Очередь', path === '/queue') : null}
+          {moderator ? link('#/queue', 'Очередь', path === '/queue', waiting.data?.total) : null}
           {moderator ? link('#/settings', 'Настройки', path === '/settings') : null}
         </nav>
         <span className="who">
