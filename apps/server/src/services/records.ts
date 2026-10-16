@@ -582,9 +582,15 @@ export async function link(db: Db, ctx: Ctx, input: { from: unknown; to: unknown
 export async function queue(db: Db, ctx: Ctx, limit = 50) {
   need(ctx, 'moderate');
   const rows = await db.record.findMany({ where: { status: { in: WAITING } }, include: withRefs });
-  const ordered = queueOrder(rows).slice(0, Math.min(200, Math.max(1, limit)));
+  const all = queueOrder(rows);
+  const ordered = all.slice(0, Math.min(500, Math.max(1, limit)));
   const agent = await forAgent(db, ordered);
-  return { records: ordered.map(view), text: agent.length ? agent.map(agentLines).join('\n\n') : 'Очередь пуста.' };
+  const more = all.length > ordered.length ? `\n\n… всего в очереди ${all.length}, показаны первые ${ordered.length}` : '';
+  return {
+    total: all.length,
+    records: ordered.map(view),
+    text: agent.length ? agent.map(agentLines).join('\n\n') + more : 'Очередь пуста.',
+  };
 }
 
 export interface ListInput {
@@ -597,7 +603,18 @@ export interface ListInput {
   pageSize?: number;
   includeFalse?: boolean;
   needsCheck?: boolean;
+  /** ярлык автора */
+  author?: string;
+  /** порядок: number — по номеру (по умолчанию), author — по автору, requests — чаще запрашивали агенты, new — сначала новые */
+  sort?: string;
 }
+
+const LIST_ORDER: Record<string, Prisma.RecordOrderByWithRelationInput[]> = {
+  number: [{ number: 'asc' }],
+  author: [{ author: { label: 'asc' } }, { number: 'asc' }],
+  requests: [{ requestsCount: 'desc' }, { number: 'asc' }],
+  new: [{ created: 'desc' }, { number: 'desc' }],
+};
 
 /** Список записей — для веба и для разбора с Claude (brain_list, раздел 6.1). */
 export async function list(db: Db, ctx: Ctx, input: ListInput) {
@@ -620,6 +637,9 @@ export async function list(db: Db, ctx: Ctx, input: ListInput) {
     where.status = status;
   }
   if (input.needsCheck) where.needsCheck = true;
+  if (input.author?.trim()) where.author = { label: input.author.trim() };
+  const orderBy = LIST_ORDER[input.sort || 'number'];
+  if (!orderBy) throw invalid('sort: number, author, requests или new');
   if (input.q?.trim()) {
     const words = parseQuery(input.q).phrasings.flat();
     if (words.length) {
@@ -632,7 +652,7 @@ export async function list(db: Db, ctx: Ctx, input: ListInput) {
   const page = Math.max(1, input.page ?? 1);
   const [total, rows] = await Promise.all([
     db.record.count({ where }),
-    db.record.findMany({ where, include: withRefs, orderBy: { number: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+    db.record.findMany({ where, include: withRefs, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
   ]);
   const shown = input.includeFalse === false ? rows.filter((r) => !(r.type === 'conclusion' && r.worked + r.failed >= TRUST.minMarks && r.worked / (r.worked + r.failed + 1) <= TRUST.falseAt)) : rows;
   const lines = shown.map(
@@ -700,6 +720,17 @@ export async function setSoftware(db: Db, ctx: Ctx, product: string, version: st
 
 export async function software(db: Db) {
   return db.softwareCurrent.findMany({ orderBy: { product: 'asc' } });
+}
+
+/** Авторы записей с числом записей — для фильтра в вебе. */
+export async function authors(db: Db, ctx: Ctx) {
+  need(ctx, 'read');
+  const groups = await db.record.groupBy({ by: ['authorId'], _count: { _all: true } });
+  const people = await db.person.findMany({ where: { id: { in: groups.map((g) => g.authorId) } }, select: { id: true, label: true } });
+  const label = new Map(people.map((p) => [p.id, p.label]));
+  return groups
+    .map((g) => ({ label: label.get(g.authorId) ?? '', records: g._count._all }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
 }
 
 export { AppError };

@@ -142,8 +142,11 @@ export function buildApp(opts: AppOptions) {
       page: int(q.page),
       pageSize: int(q.pageSize),
       needsCheck: flag(q.needs_check),
+      author: q.author,
+      sort: q.sort,
     });
   });
+  app.get('/api/authors', async (request) => records.authors(db, await auth(request)));
   app.get('/api/records/:number', async (request) =>
     records.getRecord(db, await auth(request), num(request), { history: flag(query(request).history) }),
   );
