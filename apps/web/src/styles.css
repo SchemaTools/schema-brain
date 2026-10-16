@@ -277,6 +277,16 @@ main {
 .trust.bad {
   color: var(--bad);
 }
+.marks {
+  display: inline-flex;
+  gap: 8px;
+}
+.marks .worked.has {
+  color: var(--pos);
+}
+.marks .failed.has {
+  color: var(--bad);
+}
 
 /* карточка */
 .big {

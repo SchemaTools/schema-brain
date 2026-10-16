@@ -218,6 +218,10 @@ describe('сервис', () => {
     const fresh = (await call('moderator', 'GET', '/api/records?sort=new')).body.records.map((r: any) => r.number);
     assert.deepEqual(fresh, [...fresh].sort((x: number, y: number) => y - x));
     assert.equal((await call('moderator', 'GET', '/api/records?sort=вбок')).status, 400);
+    const worked = (await call('moderator', 'GET', '/api/records?sort=worked')).body.records.map((r: any) => r.worked);
+    assert.deepEqual(worked, [...worked].sort((x: number, y: number) => y - x));
+    const failed = (await call('moderator', 'GET', '/api/records?sort=failed')).body.records.map((r: any) => r.failed);
+    assert.deepEqual(failed, [...failed].sort((x: number, y: number) => y - x));
     const authors = (await call('коллега 2', 'GET', '/api/authors')).body;
     const total = (await call('moderator', 'GET', '/api/records')).body.total;
     assert.equal(authors.reduce((s: number, a: any) => s + a.records, 0), total);
