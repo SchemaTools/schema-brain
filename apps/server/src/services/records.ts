@@ -705,10 +705,11 @@ export async function graph(db: Db, ctx: Ctx, center?: number, depth = 2) {
     ids = rows.map((r) => r.id);
   } else {
     const rows = await db.record.findMany({
-      where: { status: { in: ['accepted', 'pending', 'disputed', 'open', 'answered'] } },
+      // граф целиком: режимы «Проблемы» и «Обзор» веб считает сам; заменённые — бледно, для истории
+      where: { status: { in: ['accepted', 'pending', 'disputed', 'open', 'answered', 'replaced'] } },
       select: { id: true },
       orderBy: { number: 'desc' },
-      take: 500,
+      take: 2000,
     });
     ids = rows.map((r) => r.id);
   }
