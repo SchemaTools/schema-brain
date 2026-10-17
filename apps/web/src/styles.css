@@ -423,59 +423,6 @@ td {
   }
 }
 
-/* граф */
-.graph-wrap {
-  display: grid;
-  grid-template-columns: 1fr 260px;
-  gap: 16px;
-  align-items: start;
-}
-.graph {
-  height: 70vh;
-  min-height: 420px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-.graph-side {
-  margin: 0;
-}
-.legend li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-.dot {
-  display: inline-block;
-  flex: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-.dot.hyp {
-  border: 2px dashed var(--ink);
-  background: #a9adb1;
-}
-.line {
-  display: inline-block;
-  flex: none;
-  width: 20px;
-  border-top: 2px solid var(--ink3);
-}
-.line.red {
-  border-top: 2px dashed var(--bad);
-}
-.line.green {
-  border-top-color: var(--pos);
-}
-@media (max-width: 800px) {
-  .graph-wrap {
-    grid-template-columns: 1fr;
-  }
-  .graph {
-    height: 60vh;
-  }
-}
 
 /* очередь модерации: запись целиком с быстрыми ответами */
 .qcard .num {
@@ -562,4 +509,202 @@ td {
 }
 .qdone.warn {
   border-left-color: var(--warn);
+}
+
+/* граф — по согласованному макету 2026-10-16: три колонки на всю ширину */
+main.wide {
+  max-width: none;
+  padding: 0;
+}
+.graph-app {
+  display: grid;
+  grid-template-columns: 240px 1fr 340px;
+  height: calc(100vh - 57px);
+}
+.gleft,
+.gright {
+  overflow: auto;
+  padding: 14px 16px;
+  background: var(--surface);
+}
+.gleft {
+  border-right: 1px solid var(--line);
+}
+.gright {
+  border-left: 1px solid var(--line);
+}
+.gleft .lab {
+  margin-top: 14px;
+}
+.gleft .lab:first-child {
+  margin-top: 0;
+}
+.gleft input[type='search'] {
+  width: 100%;
+}
+.gleft .check {
+  display: flex;
+  margin: 3px 0;
+  font-size: 13px;
+}
+.gmodes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gmode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.gmode.on {
+  border-color: var(--accent);
+  background: var(--accent-s);
+  font-weight: 600;
+}
+.gmode small {
+  color: var(--ink3);
+  font-weight: 400;
+}
+.gcnt {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.gcenter {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #fbfbfc;
+}
+.gcenter .graph {
+  position: absolute;
+  inset: 0;
+}
+.gtools {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 4px;
+}
+.gdepth {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.ghint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  max-width: 300px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 12px;
+  line-height: 17px;
+}
+.gtip {
+  position: absolute;
+  z-index: 5;
+  max-width: 320px;
+  padding: 8px 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre-line;
+  pointer-events: none;
+}
+.gright .big {
+  font-size: 15px;
+  line-height: 22px;
+}
+.gnb {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink3);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.gnb:hover {
+  background: var(--accent-s);
+}
+.gnb.contradicts {
+  border-left-color: var(--bad);
+}
+.gnb.answers {
+  border-left-color: var(--pos);
+}
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.gshape {
+  display: inline-block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--ink2);
+  background: #fff;
+}
+.gshape.rule {
+  border-radius: 3px;
+}
+.gshape.fact {
+  border-radius: 50%;
+}
+.gshape.hypothesis {
+  border-style: dashed;
+  border-radius: 50%;
+}
+.gshape.question {
+  transform: rotate(45deg) scale(0.8);
+}
+.line {
+  display: inline-block;
+  flex: none;
+  width: 22px;
+  border-top: 2px solid var(--ink3);
+}
+.line.red {
+  border-top: 2px dashed var(--bad);
+}
+.line.green {
+  border-top-color: var(--pos);
+}
+.line.dot {
+  border-top-style: dotted;
+}
+@media (max-width: 1200px) {
+  .graph-app {
+    grid-template-columns: 200px 1fr 280px;
+  }
+}
+.gmobile {
+  padding: 16px;
 }

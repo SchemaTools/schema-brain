@@ -968,7 +968,7 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
           </button>
         </span>
       </header>
-      <main>{children}</main>
+      <main className={path === '/graph' ? 'wide' : undefined}>{children}</main>
     </div>
   );
 }
@@ -990,7 +990,7 @@ export function App() {
   else if (path === '/graph')
     page = (
       <Suspense fallback={<p className="muted">Загрузка графа…</p>}>
-        <GraphPage params={params} />
+        <GraphPage params={params} me={me} />
       </Suspense>
     );
   else if (path === '/queue') page = <Queue />;
