@@ -42,7 +42,8 @@ export function initialStatus(type: RecordType, hasContradiction: boolean): Stat
   return hasContradiction ? 'disputed' : 'pending';
 }
 
-export type Decision = 'accept' | 'reject' | 'merge' | 'replace' | 'reopen' | 'close';
+/** hypothesis — «спорное»: принять, сменив вид на гипотезу (решение 2026-10-16) */
+export type Decision = 'accept' | 'hypothesis' | 'reject' | 'merge' | 'replace' | 'reopen' | 'close';
 
 export interface DecisionResult {
   /** новое состояние записи */
@@ -82,6 +83,7 @@ export function decide(
   const waiting = record.status === 'pending' || record.status === 'disputed';
   switch (decision) {
     case 'accept':
+    case 'hypothesis':
       if (!waiting) return fail('принять можно только запись на модерации');
       if (conflictsWithRule) {
         return fail('запись противоречит правилу бюро: «заменить» правило или «отклонить» запись');

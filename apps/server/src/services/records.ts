@@ -486,7 +486,7 @@ export async function moderate(
   input: { decision: unknown; target?: unknown; edits?: unknown; comment?: unknown },
 ) {
   need(ctx, 'moderate');
-  const decisions: Decision[] = ['accept', 'reject', 'merge', 'replace', 'reopen', 'close'];
+  const decisions: Decision[] = ['accept', 'hypothesis', 'reject', 'merge', 'replace', 'reopen', 'close'];
   const decision = String(input.decision ?? '') as Decision;
   if (!decisions.includes(decision)) throw invalid(`decision — одно из: ${decisions.join(', ')}`);
   const comment = typeof input.comment === 'string' ? input.comment.trim().slice(0, 500) : '';
@@ -504,13 +504,18 @@ export async function moderate(
     });
     const result = (() => {
       try {
-        return decide(ref(row), decision, target ? ref(target) : undefined, conflictsWithRule && decision === 'accept');
+        return decide(ref(row), decision, target ? ref(target) : undefined, conflictsWithRule && (decision === 'accept' || decision === 'hypothesis'));
       } catch (error) {
         throw invalid((error as Error).message);
       }
     })();
 
-    if (input.edits && typeof input.edits === 'object') row = await applyEdits(tx, ctx, row, input.edits as Record<string, unknown>);
+    // «спорное» — принять гипотезой: вид меняется в той же транзакции, правка — в журнале
+    const edits = {
+      ...(input.edits && typeof input.edits === 'object' ? (input.edits as Record<string, unknown>) : {}),
+      ...(decision === 'hypothesis' ? { kind: 'hypothesis' } : {}),
+    };
+    if (Object.keys(edits).length) row = await applyEdits(tx, ctx, row, edits);
 
     await tx.record.update({ where: { id: row.id }, data: { status: result.status, version: { increment: 1 } } });
     if (target && result.link) {
@@ -544,7 +549,7 @@ export async function moderate(
       comment,
     });
     const updated = await byNumber(tx, number);
-    return { record: view(updated), text: `№ ${number}: ${RU.status[result.status]}` };
+    return { record: view(updated), text: `№ ${number}: ${RU.status[result.status]}${decision === 'hypothesis' ? ' как гипотеза' : ''}` };
   });
 }
 
@@ -586,9 +591,26 @@ export async function queue(db: Db, ctx: Ctx, limit = 50) {
   const ordered = all.slice(0, Math.min(500, Math.max(1, limit)));
   const agent = await forAgent(db, ordered);
   const more = all.length > ordered.length ? `\n\n… всего в очереди ${all.length}, показаны первые ${ordered.length}` : '';
+  // связи записей очереди с текстом соседей — модератор решает, не открывая карточки
+  const ids = ordered.map((r) => r.id);
+  const links = ids.length
+    ? await db.link.findMany({
+        where: { OR: [{ fromId: { in: ids } }, { toId: { in: ids } }] },
+        include: { from: { include: withRefs }, to: { include: withRefs } },
+        orderBy: { created: 'asc' },
+      })
+    : [];
+  const linksOf = (id: string) =>
+    links
+      .filter((l) => l.fromId === id || l.toId === id)
+      .map((l) => {
+        const outgoing = l.fromId === id;
+        const other = outgoing ? l.to : l.from;
+        return { type: l.type, outgoing, other: view(other) };
+      });
   return {
     total: all.length,
-    records: ordered.map(view),
+    records: ordered.map((r) => ({ ...view(r), links: linksOf(r.id) })),
     text: agent.length ? agent.map(agentLines).join('\n\n') + more : 'Очередь пуста.',
   };
 }

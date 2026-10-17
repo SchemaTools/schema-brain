@@ -149,6 +149,9 @@ test('решения модератора по выводу', () => {
   const pending = ref('conclusion', 'fact', 'pending');
   const accepted = ref('conclusion', 'fact');
   assert.deepEqual(decide(pending, 'accept'), { status: 'accepted' });
+  assert.deepEqual(decide(pending, 'hypothesis'), { status: 'accepted' });
+  assert.throws(() => decide(ref('conclusion', 'fact', 'disputed'), 'hypothesis', undefined, true), /противоречит правилу/);
+  assert.throws(() => decide(accepted, 'hypothesis'), /только запись на модерации/);
   assert.deepEqual(decide(ref('conclusion', 'fact', 'disputed'), 'reject'), { status: 'rejected' });
   assert.deepEqual(decide(pending, 'merge', accepted), { status: 'merged', link: 'merged_into' });
   assert.deepEqual(decide(ref('conclusion', 'rule', 'disputed'), 'replace', ref('conclusion', 'rule')), {

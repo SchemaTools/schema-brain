@@ -184,6 +184,35 @@ describe('сервис', () => {
     assert.match(r.body.text, /пометка «проверить» снята/);
   });
 
+  test('очередь: связи с текстом соседей; «спорное» — принята как гипотеза, в журнале правка вида', async () => {
+    const base = (await call('автор', 'POST', '/api/records', fact('Фильтр вида по параметру секции работает и для связанных файлов.'))).body.record.number;
+    await call('moderator', 'POST', `/api/records/${base}/moderate`, { decision: 'accept' });
+    const n = (await call('коллега 2', 'POST', '/api/records', fact('Фильтр вида по параметру секции не работает для связанных файлов.', { contradicts: [base] }))).body.record.number;
+
+    const queue = await call('moderator', 'GET', '/api/queue');
+    const item = queue.body.records.find((r: { number: number }) => r.number === n);
+    assert.deepEqual(item.links.map((l: any) => [l.type, l.outgoing, l.other.number]), [['contradicts', true, base]]);
+    assert.match(item.links[0].other.text, /работает и для связанных/);
+
+    const r = await call('moderator', 'POST', `/api/records/${n}/moderate`, { decision: 'hypothesis', comment: 'проверить на модели' });
+    assert.equal(r.body.text, `№ ${n}: принята как гипотеза`);
+    assert.equal(r.body.record.kind, 'hypothesis');
+    assert.equal(r.body.record.status, 'accepted');
+    const card = await call('moderator', 'GET', `/api/records/${n}?history=true`);
+    assert.deepEqual(card.body.history.map((h: any) => h.kind), ['created', 'edited', 'moderated']);
+    assert.equal(card.body.history[2].data.decision, 'hypothesis');
+  });
+
+  test('«спорное» недоступно, если запись противоречит правилу бюро', async () => {
+    const rule = (await call('автор', 'POST', '/api/records', fact('Связанные модели подгружаем только по общим координатам.', { kind: 'правило' }))).body.record.number;
+    await call('moderator', 'POST', `/api/records/${rule}/moderate`, { decision: 'accept' });
+    const n = (await call('коллега 3', 'POST', '/api/records', fact('Связанные модели можно подгружать от центра к центру.', { contradicts: [rule] }))).body.record.number;
+    const r = await call('moderator', 'POST', `/api/records/${n}/moderate`, { decision: 'hypothesis' });
+    assert.equal(r.status, 400);
+    assert.match(r.body.message, /противоречит правилу бюро/);
+    assert.equal((await call('moderator', 'GET', `/api/records/${n}`)).body.record.kind, 'fact', 'вид не изменился — транзакция откатилась');
+  });
+
   test('правка модератором: чужая версия — 409, длинный текст — 400', async () => {
     const n = (await call('автор', 'POST', '/api/records', fact('Черновик для правки.'))).body.record.number;
     const ok = await call('moderator', 'PATCH', `/api/records/${n}`, { text: 'Поправленный текст.', version: 1 });

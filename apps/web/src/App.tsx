@@ -602,19 +602,144 @@ function Questions() {
   );
 }
 
+interface QueueLink {
+  type: string;
+  outgoing: boolean;
+  other: RecordView;
+}
+type QueueRecord = RecordView & { links: QueueLink[] };
+
+// как читается связь со стороны записи очереди
+const LINK_FROM: Record<string, string> = {
+  contradicts: 'противоречит',
+  answers: 'отвечает на вопрос',
+  derived_from: 'выведена из',
+  replaces: 'заменяет',
+  merged_into: 'объединена с',
+};
+const LINK_TO: Record<string, string> = {
+  contradicts: 'противоречит',
+  answers: 'ответ на неё',
+  derived_from: 'из неё выведена',
+  replaces: 'заменена записью',
+  merged_into: 'с ней объединена',
+};
+
+const VERDICT = {
+  accept: { label: 'Верно', cls: 'ok', done: 'принята' },
+  reject: { label: 'Ложное', cls: 'bad', done: 'отклонена' },
+  hypothesis: { label: 'Спорное → гипотеза', cls: 'warn', done: 'принята как гипотеза' },
+} as const;
+type Verdict = keyof typeof VERDICT;
+
+/** Запись очереди целиком — решение модератора без перехода в карточку (замечание 2026-10-16). */
+function QueueCard({ r, onDone }: { r: QueueRecord; onDone: (verdict: Verdict) => void }) {
+  const [comment, setComment] = useState('');
+  const [error, setError] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  const ruleConflict = r.links.find((l) => l.type === 'contradicts' && l.other.kind === 'rule' && l.other.status === 'accepted');
+  const decide = async (verdict: Verdict) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await api('POST', `/api/records/${r.number}/moderate`, { decision: verdict, comment: comment || undefined });
+      onDone(verdict);
+      window.dispatchEvent(new Event('queue-changed'));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className={`card qcard${r.status === 'disputed' ? ' disputed' : ''}`}>
+      <div className="meta">
+        <span className="num">№ {r.number}</span>
+        <Badge r={r} />
+        <span>{r.coreName}</span>
+        {r.project ? <span>проект {r.project}</span> : null}
+        <span className={`status s-${r.status}`}>{r.statusName}</span>
+        {r.requestsCount ? <span>запрашивали агенты: {r.requestsCount}</span> : null}
+        <span className="author">{r.author}</span>
+      </div>
+      <p className="big">{r.text}</p>
+      <dl>
+        {r.softwareVersion ? (
+          <>
+            <dt>Версия</dt>
+            <dd>{r.softwareVersion}</dd>
+          </>
+        ) : null}
+        {r.notApplicable ? (
+          <>
+            <dt>Не применимо</dt>
+            <dd>{r.notApplicable}</dd>
+          </>
+        ) : null}
+        <dt>Источник</dt>
+        <dd>{r.source}</dd>
+        <dt>Отправлена</dt>
+        <dd>{new Date(r.created).toLocaleString('ru-RU')}</dd>
+      </dl>
+      {r.links.length ? (
+        <div className="qlinks">
+          {r.links.map((l) => (
+            <a key={`${l.type}-${l.other.number}`} className={`qlink ${l.type}`} href={`#/r/${l.other.number}`}>
+              <span className="lab">
+                {(l.outgoing ? LINK_FROM : LINK_TO)[l.type] ?? l.type} № {l.other.number} · {l.other.kind ? KIND[l.other.kind] : 'вопрос'} ·{' '}
+                {l.other.statusName}
+                {l.other.type === 'conclusion' ? ` · ${l.other.trust}` : ''}
+              </span>
+              <span>{l.other.text}</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+      {ruleConflict ? (
+        <div className="note warn">
+          Противоречит правилу бюро № {ruleConflict.other.number}: у правила соперников нет. «Верно» и «Спорное» недоступны — отклоните запись или
+          замените правило в <a href={`#/r/${r.number}`}>карточке</a>.
+        </div>
+      ) : null}
+      <div className="qacts">
+        <input className="grow" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Комментарий (необязательно)" />
+        {(Object.keys(VERDICT) as Verdict[]).map((v) => (
+          <button
+            key={v}
+            className={`btn ${VERDICT[v].cls}`}
+            disabled={busy || (!!ruleConflict && v !== 'reject')}
+            onClick={() => void decide(v)}
+          >
+            {VERDICT[v].label}
+          </button>
+        ))}
+        <a className="btn" href={`#/r/${r.number}`}>
+          Карточка
+        </a>
+      </div>
+      <Errors error={error} />
+    </section>
+  );
+}
+
 function Queue() {
-  const { data, error } = useLoad(() => api<{ total: number; records: RecordView[] }>('GET', '/api/queue?limit=500'), []);
+  const { data, error } = useLoad(() => api<{ total: number; records: QueueRecord[] }>('GET', '/api/queue?limit=500'), []);
   const [author, setAuthor] = useState('');
+  const [done, setDone] = useState<Map<number, Verdict>>(new Map());
   const records = data?.records ?? [];
   const byAuthor = new Map<string, number>();
   for (const r of records) byAuthor.set(r.author, (byAuthor.get(r.author) ?? 0) + 1);
   const shown = author ? records.filter((r) => r.author === author) : records;
+  const left = data ? data.total - done.size : 0;
   return (
     <>
       <div className="head">
-        <h1>Очередь модерации{data ? ` · ${data.total}` : ''}</h1>
+        <h1>Очередь модерации{data ? ` · ${left}` : ''}</h1>
       </div>
-      <p className="muted">Сначала противоречия, затем записи, которые уже запрашивали агенты, затем остальные.</p>
+      <p className="muted">
+        Сначала противоречия, затем записи, которые уже запрашивали агенты, затем остальные. «Спорное» — запись принимается как гипотеза: агенты видят её
+        с пометкой «проверь, прежде чем опираться».
+      </p>
       {byAuthor.size > 1 ? (
         <div className="filters">
           <select value={author} onChange={(e) => setAuthor(e.target.value)}>
@@ -631,7 +756,17 @@ function Queue() {
       ) : null}
       <Errors error={error} />
       {data && data.total > records.length ? <p className="lab">Показаны первые {records.length} из {data.total}</p> : null}
-      <div className="list">{data ? (shown.length ? shown.map((r) => <Row key={r.number} r={r} />) : <p className="muted">Очередь пуста.</p>) : null}</div>
+      {data && !shown.length ? <p className="muted">Очередь пуста.</p> : null}
+      {shown.map((r) => {
+        const verdict = done.get(r.number);
+        return verdict ? (
+          <a key={r.number} className={`qdone ${VERDICT[verdict].cls}`} href={`#/r/${r.number}`}>
+            № {r.number} — {VERDICT[verdict].done} · {r.text.length > 90 ? `${r.text.slice(0, 88)}…` : r.text}
+          </a>
+        ) : (
+          <QueueCard key={r.number} r={r} onDone={(v) => setDone((m) => new Map(m).set(r.number, v))} />
+        );
+      })}
     </>
   );
 }
@@ -800,6 +935,12 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
     () => (moderator ? api<{ total: number }>('GET', '/api/queue?limit=1') : Promise.resolve({ total: 0 })),
     [path, moderator],
   );
+  // решение в очереди — число в меню обновляется сразу, без перехода
+  const reloadWaiting = waiting.reload;
+  useEffect(() => {
+    window.addEventListener('queue-changed', reloadWaiting);
+    return () => window.removeEventListener('queue-changed', reloadWaiting);
+  }, [reloadWaiting]);
   const link = (href: string, label: string, active: boolean, count?: number) => (
     <a href={href} className={active ? 'active' : ''}>
       {label}
