@@ -476,3 +476,90 @@ td {
     height: 60vh;
   }
 }
+
+/* очередь модерации: запись целиком с быстрыми ответами */
+.qcard .num {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.qcard.disputed {
+  border-left: 3px solid var(--bad);
+}
+.qlinks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.qlink {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink3);
+  color: var(--ink);
+}
+.qlink:hover {
+  background: var(--accent-s);
+  text-decoration: none;
+}
+.qlink .lab {
+  margin: 0;
+}
+.qlink.contradicts {
+  border-left-color: var(--bad);
+}
+.qlink.answers {
+  border-left-color: var(--pos);
+}
+.qacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.qacts .grow {
+  flex: 1 1 220px;
+}
+.btn.ok {
+  border-color: var(--pos);
+  color: var(--pos);
+}
+.btn.bad {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.btn.warn {
+  border-color: var(--warn);
+  color: var(--warn-i);
+}
+.btn.ok:hover:not(:disabled) {
+  background: var(--pos-s);
+}
+.btn.bad:hover:not(:disabled) {
+  background: var(--bad-s);
+}
+.btn.warn:hover:not(:disabled) {
+  background: var(--warn-s);
+}
+.qdone {
+  display: block;
+  margin-bottom: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink3);
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 13px;
+}
+.qdone.ok {
+  border-left-color: var(--pos);
+}
+.qdone.bad {
+  border-left-color: var(--bad);
+}
+.qdone.warn {
+  border-left-color: var(--warn);
+}

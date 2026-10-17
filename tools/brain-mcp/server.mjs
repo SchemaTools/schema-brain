@@ -280,13 +280,13 @@ export function tools(api) {
       name: 'brain_moderate',
       scope: 'moderate',
       description:
-        'Решение модератора по записи: accept — принять, reject — отклонить, merge — объединить с принятой target, replace — заменить правило бюро target этим правилом, reopen — вернуть, close — закрыть вопрос. ' +
+        'Решение модератора по записи: accept — принять (верно), hypothesis — принять как гипотезу (спорное), reject — отклонить (ложное), merge — объединить с принятой target, replace — заменить правило бюро target этим правилом, reopen — вернуть, close — закрыть вопрос. ' +
         'edits — поправки полей до принятия (text, kind, core, project, software_version, not_applicable). Только по явному решению модератора.',
       inputSchema: {
         type: 'object',
         properties: {
           number: NUMBER,
-          decision: { type: 'string', enum: ['accept', 'reject', 'merge', 'replace', 'reopen', 'close'] },
+          decision: { type: 'string', enum: ['accept', 'hypothesis', 'reject', 'merge', 'replace', 'reopen', 'close'] },
           target: NUMBER,
           edits: { type: 'object' },
           comment: { type: 'string' },
