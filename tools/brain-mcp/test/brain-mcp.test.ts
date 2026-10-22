@@ -141,7 +141,7 @@ describe('MCP-пакет', () => {
     child.stdin.end();
     await new Promise((resolve) => child.on('exit', resolve));
     const byId = new Map(lines.map((l) => [l.id, l]));
-    assert.equal(byId.get(1).result.serverInfo.version, '0.1.0');
+    assert.equal(byId.get(1).result.serverInfo.version, '0.1.1');
     const names = byId.get(2).result.tools.map((t: { name: string }) => t.name);
     assert.deepEqual(names, ['brain_search', 'brain_get', 'brain_propose', 'brain_ask', 'brain_feedback', 'brain_cores', 'brain_projects']);
     assert.equal(byId.get(null).error.code, -32700);
