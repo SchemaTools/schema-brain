@@ -59,7 +59,7 @@ after(async () => {
 
 describe('сервис', () => {
   test('состояние без токена; без токена остальное — 401', async () => {
-    assert.deepEqual((await call(null, 'GET', '/api/health')).body, { ok: true, version: 'test' });
+    assert.deepEqual((await call(null, 'GET', '/api/health')).body, { ok: true, version: 'test', vectors: null });
     assert.equal((await call(null, 'GET', '/api/search?q=оси')).status, 401);
     assert.equal(
       (await app.inject({ method: 'GET', url: '/api/me', headers: { authorization: 'Bearer sbt_' + 'x'.repeat(43) } })).statusCode,

@@ -7,4 +7,5 @@ export * from './rules.ts';
 export * from './search.ts';
 export * from './tokens.ts';
 export * from './trust.ts';
+export * from './vectors.ts';
 export * from './versions.ts';

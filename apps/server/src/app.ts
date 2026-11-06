@@ -7,6 +7,8 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { bearer } from '../../../packages/core/src/index.ts';
 import { AppError, type Ctx, need } from './context.ts';
 import type { Db } from './db/client.ts';
+import type { Embedder } from './embed/e5.ts';
+import { getEmbedder, setEmbedder } from './services/vectors.ts';
 import { closeSession, listPersons, addPerson, issueToken, openSession, revokeToken, authenticate, sessionCtx } from './services/people.ts';
 import { type SchemaTeamsOptions, syncProjects } from './services/projects.ts';
 import * as records from './services/records.ts';
@@ -23,6 +25,8 @@ export interface AppOptions {
   webDir?: string;
   /** Schema Teams для синхронизации проектов по кнопке */
   schemaTeams?: SchemaTeamsOptions | null;
+  /** модель векторов: для тестов; в работе подключает main.ts (embed/load.ts) */
+  embedder?: Embedder | null;
 }
 
 const SESSION_COOKIE = 'sb_session';
@@ -35,6 +39,7 @@ declare module 'fastify' {
 
 export function buildApp(opts: AppOptions) {
   const { db } = opts;
+  if (opts.embedder !== undefined) setEmbedder(opts.embedder);
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 64 * 1024 });
   app.register(cookie);
   if (opts.webDir && existsSync(opts.webDir)) {
@@ -92,7 +97,7 @@ export function buildApp(opts: AppOptions) {
 
   app.get('/api/health', async () => {
     await db.$queryRaw`SELECT 1`;
-    return { ok: true, version: opts.version };
+    return { ok: true, version: opts.version, vectors: getEmbedder()?.name ?? null };
   });
 
   // --- вход в веб ---
