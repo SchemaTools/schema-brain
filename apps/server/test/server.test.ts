@@ -67,6 +67,11 @@ describe('сервис', () => {
     );
   });
 
+  test('память без модели векторов — пустое облако', async () => {
+    assert.deepEqual((await call('reader', 'GET', '/api/memory')).body, { vectors: null, nodes: [], links: [] });
+    assert.equal((await call('reader', 'GET', '/api/memory/query?q=оси')).body.vectors, null);
+  });
+
   test('миграции повторно — ничего не применяют', async () => {
     const dir = new URL('../../../prisma/migrations', import.meta.url);
     assert.deepEqual(await migrate(dbUrl, decodeURIComponent(dir.pathname.replace(/^\/([A-Za-z]:)/, '$1'))), []);

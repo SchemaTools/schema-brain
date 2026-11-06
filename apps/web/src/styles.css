@@ -708,3 +708,181 @@ main.wide {
 .gmobile {
   padding: 16px;
 }
+
+/* экран «Память» (2026-11-06): облако, сфера вопроса, объём 3D */
+.memory-app .gleft .check {
+  align-items: center;
+  gap: 6px;
+}
+.mask {
+  display: flex;
+  gap: 6px;
+}
+.mask input {
+  flex: 1;
+  min-width: 0;
+}
+.mrow {
+  display: grid;
+  grid-template-columns: 12px auto auto 1fr;
+  align-items: start;
+  gap: 4px 6px;
+  width: 100%;
+  margin: 3px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.mrow:hover,
+.mrow.on {
+  border-color: var(--accent);
+}
+.mrow .dot {
+  margin-top: 2px;
+}
+.mnum {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mscore {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.mtext {
+  grid-column: 1 / -1;
+  color: var(--ink2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.small {
+  font-size: 12px;
+}
+.mview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mempty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink3);
+}
+.mdot {
+  cursor: pointer;
+}
+.mdot.faded {
+  opacity: 0.18;
+}
+.mdot:hover {
+  opacity: 1;
+}
+.mring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 0.008;
+}
+.mdot.linked .mring {
+  stroke: var(--ink2);
+  stroke-dasharray: 0.012 0.008;
+}
+.mdot.picked .mring {
+  stroke: var(--ink);
+  stroke-width: 0.01;
+}
+.mlabel {
+  font-size: 0.045px;
+  font-weight: 600;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.mray {
+  stroke: var(--accent);
+  stroke-width: 0.004;
+  opacity: 0.5;
+}
+.mroad {
+  stroke: var(--ink2);
+  stroke-width: 0.005;
+  stroke-dasharray: 0.015 0.01;
+}
+.mquery circle {
+  fill: var(--ink);
+  stroke: #fff;
+  stroke-width: 0.01;
+}
+.mquery text {
+  font-size: 0.05px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.mgrid {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 0.004;
+}
+.mthreshold {
+  fill: var(--accent-s);
+  fill-opacity: 0.5;
+  stroke: var(--accent);
+  stroke-width: 0.006;
+  stroke-dasharray: 0.02 0.012;
+}
+.mgridt {
+  font-size: 0.04px;
+  fill: var(--ink3);
+}
+.mgridt.strong {
+  fill: var(--accent);
+  font-weight: 600;
+}
+.mtip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  max-width: 560px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 18px;
+  pointer-events: none;
+}
+.mcard .mbig {
+  margin: 10px 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+.mcard .meta {
+  align-items: center;
+}
+.mcard .btn {
+  margin-top: 12px;
+}
+@media (max-width: 760px) {
+  /* телефон: вопрос и найденное сверху, картинка, запись — столбиком, страница прокручивается */
+  .graph-app.memory-app {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .memory-app .gleft,
+  .memory-app .gright {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .memory-app .gcenter {
+    height: 70vh;
+  }
+  .memory-app .ghint {
+    display: none;
+  }
+}
