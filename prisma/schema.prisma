@@ -113,6 +113,10 @@ model Record {
   importHash        String?                  @unique @map("import_hash")
   version           Int                      @default(1)
   searchVector      Unsupported("tsvector")? @map("search_vector")
+  /// вектор смысла (e5), читается и пишется только запросами SQL — services/vectors.ts
+  embedding         Unsupported("real[]")?   @map("embedding")
+  embeddingModel    String?                  @map("embedding_model")
+  embeddedVersion   Int?                     @map("embedded_version")
   created           DateTime                 @default(now()) @db.Timestamptz(3)
   updated           DateTime                 @default(now()) @updatedAt @db.Timestamptz(3)
   linksFrom         Link[]                   @relation("from")

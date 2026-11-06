@@ -5,6 +5,8 @@ import { parseArgs } from 'node:util';
 import { AppError, systemCtx } from './context.ts';
 import { loadConfig } from './config.ts';
 import { createDb } from './db/client.ts';
+import { loadEmbedder } from './embed/load.ts';
+import { embedPending } from './services/vectors.ts';
 import { migrate } from './db/migrate.ts';
 import { exportDataset, importFolder, wikiPage } from './services/exchange.ts';
 import { addPerson, findPerson, issueToken, listPersons, revokeToken } from './services/people.ts';
@@ -24,7 +26,8 @@ const HELP = `Команды Schema Brain:
   software set <продукт> <версия>           текущая версия — пометка «проверить» у записей с другой
   import-md <папка> --person <ярлык>        импорт md-записей шага 0 одного сотрудника
   export-dataset <папка>                    датасет JSONL для дообучения
-  export-wiki <ядро> [--out файл]           страница справки по ядру (Markdown)`;
+  export-wiki <ядро> [--out файл]           страница справки по ядру (Markdown)
+  embed                                     пересчитать векторы смысла (EMBED_MODEL_DIR) у записей без вектора`;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -130,6 +133,14 @@ try {
         writeFileSync(values.out, page);
         console.log(`Страница: ${values.out}`);
       } else console.log(page);
+      break;
+    }
+    case 'embed': {
+      const e = await loadEmbedder(config.embedModelDir, (message) => console.warn(message));
+      if (!e) throw new AppError(400, 'invalid', 'Модель векторов не подключена: задайте EMBED_MODEL_DIR');
+      const started = Date.now();
+      const n = await embedPending(db);
+      console.log(`Векторы (${e.name}): пересчитано ${n} за ${((Date.now() - started) / 1000).toFixed(1)} с`);
       break;
     }
     default:

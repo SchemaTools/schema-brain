@@ -12,6 +12,7 @@ import {
   type Decision,
   decide,
   fromRu,
+  fuse,
   initialStatus,
   LINK_TYPES,
   type LinkType,
@@ -30,6 +31,7 @@ import {
 import { AppError, type Ctx, conflict, invalid, need, notFound } from '../context.ts';
 import type { Db, Tx } from '../db/client.ts';
 import { Prisma } from '../generated/prisma/client.ts';
+import { embedPending, getEmbedder, loadVectors, nearest, queryVector } from './vectors.ts';
 
 const withRefs = { core: true, project: true, author: { select: { label: true } } } as const;
 type Row = Prisma.RecordGetPayload<{ include: typeof withRefs }>;
@@ -137,16 +139,9 @@ interface Filters {
 const AGENT_STATUSES = { conclusion: ['accepted'], question: ['open', 'answered'] } as const;
 const WAITING = ['pending', 'disputed'];
 
-async function fts(
-  db: Db | Tx,
-  tsquery: string,
-  f: Filters,
-  statuses: readonly string[],
-  limit: number,
-  exclude?: string,
-): Promise<{ id: string; rank: number }[]> {
+/** Условия отбора записей для поиска — общие для слов и смысла. */
+function filterConds(f: Filters, statuses: readonly string[], exclude?: string): Prisma.Sql[] {
   const conds = [
-    Prisma.sql`r.search_vector @@ to_tsquery('russian', ${tsquery})`,
     Prisma.sql`r.type = ${f.type}`,
     Prisma.sql`r.status IN (${Prisma.join([...statuses])})`,
   ];
@@ -158,6 +153,18 @@ async function fts(
       Prisma.sql`NOT (r.worked + r.failed >= ${TRUST.minMarks} AND r.worked::float8 / (r.worked + r.failed + 1) <= ${TRUST.falseAt})`,
     );
   }
+  return conds;
+}
+
+async function fts(
+  db: Db | Tx,
+  tsquery: string,
+  f: Filters,
+  statuses: readonly string[],
+  limit: number,
+  exclude?: string,
+): Promise<{ id: string; rank: number }[]> {
+  const conds = [Prisma.sql`r.search_vector @@ to_tsquery('russian', ${tsquery})`, ...filterConds(f, statuses, exclude)];
   return db.$queryRaw<{ id: string; rank: number }[]>`
     SELECT r.id::text AS id, ts_rank_cd(r.search_vector, to_tsquery('russian', ${tsquery}))::float8 AS rank
     FROM record r WHERE ${Prisma.join(conds, ' AND ')}
@@ -182,6 +189,25 @@ async function searchIds(
     }
   }
   return mergeHits(lists, limit);
+}
+
+/**
+ * Поиск по смыслу и по словам вместе (решение 2026-11-06): смысл — основной, слова — с меньшим весом.
+ * Формулировки через «|» ищутся по смыслу каждая, у записи берётся лучшая близость. Нет модели — только слова.
+ */
+async function hybridIds(db: Db, query: string, f: Filters, statuses: readonly string[], limit: number, exclude?: string): Promise<string[]> {
+  const words = (await searchIds(db, query, f, statuses, limit, exclude)).map((h) => h.id);
+  if (!getEmbedder()) return words;
+  await embedPending(db);
+  const rows = await loadVectors(db, Prisma.join(filterConds(f, statuses, exclude), ' AND '));
+  const best = new Map<string, number>();
+  for (const phrasing of query.split('|').map((x) => x.trim()).filter(Boolean)) {
+    const q = await queryVector(phrasing);
+    if (!q) continue;
+    for (const hit of nearest(q, rows, limit * 2)) best.set(hit.id, Math.max(best.get(hit.id) ?? 0, hit.score));
+  }
+  const semantic = [...best.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  return fuse(semantic, words).slice(0, limit);
 }
 
 async function currentVersions(db: Db | Tx) {
@@ -249,7 +275,7 @@ export async function search(db: Db, ctx: Ctx, input: SearchInput) {
     includeFalse: input.includeFalse,
   };
   const limit = clampLimit(input.limit);
-  const hits = await searchIds(db, input.query, f, AGENT_STATUSES[type], limit);
+  const hits = (await hybridIds(db, input.query, f, AGENT_STATUSES[type], limit)).map((id) => ({ id }));
   // записи на модерации агенту не выдаются, но их счётчик растёт — в очереди они выше (раздел 5.6)
   const waiting = type === 'conclusion' ? await searchIds(db, input.query, f, WAITING, limit) : [];
   const rows = await db.record.findMany({ where: { id: { in: hits.map((h) => h.id) } }, include: withRefs });
@@ -377,14 +403,17 @@ export async function propose(db: Db, ctx: Ctx, raw: Record<string, unknown>) {
   // похожие принятые записи — агенту для сравнения: повтор или противоречие (раздел 5.5)
   let similar: RecordView[] = [];
   if (value.type === 'conclusion') {
-    const words = parseQuery(value.text).phrasings[0]?.filter((w) => [...w].length >= 4) ?? [];
-    if (words.length) {
-      const hits = await fts(db, anyWord(words), { type: 'conclusion', coreId: cId }, ['accepted'], 3, created.id);
-      const rows = await db.record.findMany({ where: { id: { in: hits.map((h) => h.id) } }, include: withRefs });
-      similar = hits.map((h) => rows.find((r) => r.id === h.id)!).filter(Boolean).map(view);
-    }
+    const ids = await hybridIds(db, value.text, { type: 'conclusion', coreId: cId }, ['accepted'], 3, created.id);
+    const rows = await db.record.findMany({ where: { id: { in: ids } }, include: withRefs });
+    similar = ids.map((id) => rows.find((r) => r.id === id)!).filter(Boolean).map(view);
   }
+  embedLater(db);
   return { record: view(created), existing: false, similar };
+}
+
+/** Пересчитать векторы в фоне: запрос не ждёт; ошибка модели не мешает записи (поиск дождётся пересчёта сам). */
+export function embedLater(db: Db) {
+  embedPending(db).catch((error: unknown) => console.warn('Векторы не пересчитаны:', error instanceof Error ? error.message : error));
 }
 
 /** Есть ли признак повтора при импорте (одинаковый хэш — тот же файл того же сотрудника). */
@@ -470,13 +499,15 @@ async function applyEdits(tx: Tx, ctx: Ctx, row: Row, edits: Record<string, unkn
 
 export async function edit(db: Db, ctx: Ctx, number: number, edits: Record<string, unknown>, version: unknown) {
   need(ctx, 'moderate');
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const row = await byNumber(tx, number);
     if (version !== undefined && version !== row.version) {
       throw conflict(`Запись № ${number} уже изменена (версия ${row.version}) — обновите карточку`);
     }
     return view(await applyEdits(tx, ctx, row, edits));
   });
+  embedLater(db);
+  return result;
 }
 
 export async function moderate(

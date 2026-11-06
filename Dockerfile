@@ -13,6 +13,11 @@ RUN npx prisma generate
 COPY apps/web apps/web
 RUN npx vite build apps/web
 
+# ---------- модель векторов e5 (решение 2026-11-06): версия закреплена, файлы проверяются по SHA-256 ----------
+FROM node:24-bookworm-slim AS model
+COPY scripts/fetch-model.mjs /fetch-model.mjs
+RUN node /fetch-model.mjs /model
+
 # ---------- зависимости продукта ----------
 # --omit=optional: иначе в образ попадает служебная программа prisma (необязательная зависимость
 # @prisma/client) с уязвимыми mysql2 и deepmerge-ts; из рабочих необязательных пакетов отпадает
@@ -20,14 +25,17 @@ RUN npx vite build apps/web
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --omit=optional --ignore-scripts
+# onnxruntime-node везёт библиотеки под все системы — в образе нужна только Linux
+RUN npm ci --omit=dev --omit=optional --ignore-scripts \
+  && rm -rf node_modules/onnxruntime-node/bin/napi-v*/win32 node_modules/onnxruntime-node/bin/napi-v*/darwin
 
 # ---------- образ ----------
 FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    EMBED_MODEL_DIR=/app/models/e5-small
 
 COPY --from=deps /app/node_modules node_modules
 COPY package.json package-lock.json ./
@@ -37,6 +45,7 @@ COPY apps/server/src apps/server/src
 COPY --from=build /app/apps/server/src/generated apps/server/src/generated
 COPY --from=build /app/apps/web/dist apps/web/dist
 COPY prisma/migrations prisma/migrations
+COPY --from=model /model models/e5-small
 
 USER node
 EXPOSE 3000

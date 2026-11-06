@@ -14,6 +14,8 @@ export interface Config {
   webDir: string;
   /** Schema Teams для списка проектов; пусто — проекты добавляются вручную */
   schemaTeams: { url: string; token: string } | null;
+  /** папка модели векторов e5 (model_quantized.onnx и tokenizer.json); пусто — поиск только по словам */
+  embedModelDir: string;
   version: string;
 }
 
@@ -36,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       env['SCHEMA_TEAMS_URL'] && env['SCHEMA_TEAMS_TOKEN']
         ? { url: env['SCHEMA_TEAMS_URL'], token: env['SCHEMA_TEAMS_TOKEN'] }
         : null,
+    embedModelDir: env['EMBED_MODEL_DIR'] ?? '',
     version: VERSION,
   };
 }

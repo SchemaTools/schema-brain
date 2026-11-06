@@ -55,7 +55,15 @@ if (fresh) {
 }
 
 const server = spawn(process.execPath, [`${root}apps/server/src/main.ts`], {
-  env: { ...process.env, DATABASE_URL: url, PORT: process.env['PORT'] ?? '3000', HOST: '127.0.0.1', LOG_LEVEL: 'warn' },
+  env: {
+    ...process.env,
+    DATABASE_URL: url,
+    PORT: process.env['PORT'] ?? '3000',
+    HOST: '127.0.0.1',
+    LOG_LEVEL: 'warn',
+    // векторы смысла — если модель скачана (npm run model:fetch); нет — поиск только по словам
+    ...(existsSync(`${root}private/models/e5-small`) ? { EMBED_MODEL_DIR: `${root}private/models/e5-small` } : {}),
+  },
   stdio: 'inherit',
 });
 console.log(`Schema Brain: http://127.0.0.1:${process.env['PORT'] ?? 3000}`);
