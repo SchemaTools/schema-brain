@@ -78,3 +78,21 @@ test('похожие при отправке — тоже по смыслу', as
   const sent = await call('автор', 'POST', '/api/records', fact('Видимость категорий на планах задаётся шаблоном вида.'));
   assert.ok(sent.body.similar.some((x: any) => x.number === n));
 });
+
+test('память: облако записей в осях смысла, вопрос — точка с найденными и связанными', async () => {
+  const a = await accepted('Связанный файл без общих координат сдвигает отметки уровней при обновлении.');
+  const sent = await call('автор', 'POST', '/api/records', { ...fact('Синхронизация медленная из-за отметок связанного файла.'), derived_from: [a] });
+  const b = sent.body.record.number as number;
+  await call('moderator', 'POST', `/api/records/${b}/moderate`, { decision: 'accept' });
+  const m = (await call('автор', 'GET', '/api/memory')).body;
+  assert.equal(m.vectors, 'hash');
+  assert.ok(m.nodes.length >= 2);
+  for (const n of m.nodes) for (const c of [n.x, n.y, n.z]) assert.ok(Math.abs(c) <= 1 + 1e-9, `координата ${c}`);
+  assert.ok(m.links.some((l: any) => l.from === b && l.to === a && l.type === 'derived_from'));
+  const q = (await call('автор', 'GET', `/api/memory/query?q=${encodeURIComponent('связанный файл координаты отметки')}`)).body;
+  assert.ok(q.found.includes(a), JSON.stringify(q.found));
+  assert.equal(typeof q.point.x, 'number');
+  assert.ok(q.scores[0].score >= q.scores.at(-1).score, 'близость — по убыванию');
+  if (!q.found.includes(b)) assert.ok(q.linked.includes(b), 'связанная запись подтягивается');
+  assert.equal((await call('автор', 'GET', '/api/memory/query?q=')).status, 400);
+});

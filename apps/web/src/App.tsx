@@ -4,6 +4,7 @@ import { type FormEvent, lazy, type ReactNode, Suspense, useCallback, useEffect,
 import { api, ApiError, CORES, EVENT, KIND, LINK, type Me, qs, type RecordView } from './api.ts';
 // граф — отдельным файлом: библиотека графов грузится, только когда граф открывают
 const GraphPage = lazy(() => import('./Graph.tsx').then((m) => ({ default: m.GraphPage })));
+const MemoryPage = lazy(() => import('./Memory.tsx').then((m) => ({ default: m.MemoryPage })));
 
 // --- маршрут ---------------------------------------------------------------
 
@@ -958,6 +959,7 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
           {link('#/new', 'Новая запись', path === '/new')}
           {link('#/questions', 'Вопросы', path === '/questions')}
           {link('#/graph', 'Граф', path === '/graph')}
+          {link('#/memory', 'Память', path === '/memory')}
           {moderator ? link('#/queue', 'Очередь', path === '/queue', waiting.data?.total) : null}
           {moderator ? link('#/settings', 'Настройки', path === '/settings') : null}
         </nav>
@@ -968,7 +970,7 @@ function Shell({ me, children, onLogout }: { me: Me; children: ReactNode; onLogo
           </button>
         </span>
       </header>
-      <main className={path === '/graph' ? 'wide' : undefined}>{children}</main>
+      <main className={path === '/graph' || path === '/memory' ? 'wide' : undefined}>{children}</main>
     </div>
   );
 }
@@ -991,6 +993,12 @@ export function App() {
     page = (
       <Suspense fallback={<p className="muted">Загрузка графа…</p>}>
         <GraphPage params={params} me={me} />
+      </Suspense>
+    );
+  else if (path === '/memory')
+    page = (
+      <Suspense fallback={<p className="muted">Загрузка памяти…</p>}>
+        <MemoryPage />
       </Suspense>
     );
   else if (path === '/queue') page = <Queue />;

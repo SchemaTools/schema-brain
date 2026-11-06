@@ -8,6 +8,7 @@ import { bearer } from '../../../packages/core/src/index.ts';
 import { AppError, type Ctx, need } from './context.ts';
 import type { Db } from './db/client.ts';
 import type { Embedder } from './embed/e5.ts';
+import * as memory from './services/memory.ts';
 import { getEmbedder, setEmbedder } from './services/vectors.ts';
 import { closeSession, listPersons, addPerson, issueToken, openSession, revokeToken, authenticate, sessionCtx } from './services/people.ts';
 import { type SchemaTeamsOptions, syncProjects } from './services/projects.ts';
@@ -189,6 +190,11 @@ export function buildApp(opts: AppOptions) {
     return records.link(db, await auth(request), { from: b.from, to: b.to, type: b.type, remove: b.remove });
   });
   app.get('/api/queue', async (request) => records.queue(db, await auth(request), int(query(request).limit)));
+  app.get('/api/memory', async (request) => memory.memory(db, await auth(request)));
+  app.get('/api/memory/query', async (request) => {
+    const q = query(request);
+    return memory.memoryQuery(db, await auth(request), q.q ?? '', int(q.limit));
+  });
   app.get('/api/graph', async (request) => {
     const q = query(request);
     return records.graph(db, await auth(request), q.center ? records.parseNumber(q.center) : undefined, int(q.depth));
